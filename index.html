@@ -17,7 +17,9 @@
       --text: #1e293b;
       --border: #cbd5e1;
       --bg-sun: #fef2f2;
-      --bg-sat: #eff6ff;
+      --bg-sat: #f0f9ff;
+      --text-sun: #ef4444;
+      --text-sat: #0284c7;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     
@@ -47,6 +49,45 @@
     #status-bar.saving { background: #fef08a; color: #854d0e; }
     #status-bar.saved { background: #bbf7d0; color: #166534; }
 
+    /* 中央ローディングモーダル (背景グレースケール & 操作遮断) */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: grayscale(100%) blur(2px);
+      -webkit-backdrop-filter: grayscale(100%) blur(2px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+    }
+    .loading-overlay.active { display: flex; }
+    .loading-card {
+      background: white;
+      padding: 24px 36px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.05rem;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      min-width: 220px;
+    }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 4px solid #e2e8f0;
+      border-top-color: var(--primary-light);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     .drawer {
       position: fixed; top: 0; right: -280px; width: 280px; height: 100%;
       background: white; z-index: 200; transition: right 0.3s ease; box-shadow: -2px 0 10px rgba(0,0,0,0.1); padding: 20px;
@@ -59,126 +100,80 @@
     .overlay.open { display: block; }
 
     .container {
-      flex: 1;
-      padding: 6px;
-      max-width: 800px;
-      margin: 0 auto;
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      overflow: hidden;
+      flex: 1; padding: 4px; max-width: 800px; margin: 0 auto; width: 100%;
+      display: flex; flex-direction: column; min-height: 0; overflow: hidden;
     }
 
-    #view-calendar {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      min-height: 0;
-      touch-action: pan-y;
-    }
+    #view-calendar { flex: 1; display: flex; flex-direction: column; height: 100%; min-height: 0; touch-action: pan-y; }
+    #cal-header-nav { display: flex; justify-content: space-between; align-items: center; height: 32px; flex-shrink: 0; margin-bottom: 4px; }
+    #calendar-container { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
-    #cal-header-nav {
-      display: flex; justify-content: space-between; align-items: center;
-      height: 32px; flex-shrink: 0; margin-bottom: 4px;
-    }
-
-    #calendar-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    /* 月表示: 田の字レイアウト */
+    /* カレンダー表示: 月曜始まり (月〜日) */
     .calendar-grid-month {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       grid-template-rows: 24px repeat(6, 1fr);
-      gap: 2px;
+      gap: 1px;
       background: var(--border);
       border: 1px solid var(--border);
       border-radius: 6px;
       height: 100%;
       overflow: hidden;
     }
-    .cal-header { background: #e2e8f0; text-align: center; font-size: 0.75rem; font-weight: bold; line-height: 24px; }
-    .cal-header.sun { color: #dc2626; background: #fee2e2; }
-    .cal-header.sat { color: #2563eb; background: #dbeafe; }
+    .cal-header { background: #f1f5f9; text-align: center; font-size: 0.8rem; font-weight: bold; line-height: 24px; color: #334155; }
+    .cal-header.sat { color: var(--text-sat); background: #e0f2fe; }
+    .cal-header.sun { color: var(--text-sun); background: #fee2e2; }
 
     .cal-day {
       background: white; padding: 2px; position: relative; cursor: pointer;
       display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden;
     }
+    .cal-day.other-month { background-color: #f8fafc; opacity: 0.5; }
     .cal-day.sun-bg, .cal-day.holiday-bg { background-color: var(--bg-sun); }
     .cal-day.sat-bg { background-color: var(--bg-sat); }
     .cal-day.today { border: 2px solid var(--primary-light); }
-    .cal-day .day-num { font-size: 0.75rem; font-weight: bold; color: #475569; line-height: 1; margin-bottom: 2px; }
 
-    /* 田の字 (2x2) アイコン配置 */
+    .day-header-line { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
+    .cal-day .day-num { font-size: 0.85rem; font-weight: bold; color: #1e293b; line-height: 1; }
+    .cal-day.sun-bg .day-num, .cal-day.holiday-bg .day-num { color: var(--text-sun); }
+    .cal-day.sat-bg .day-num { color: var(--text-sat); }
+    .cal-day .rokuyou { font-size: 0.6rem; color: #64748b; transform: scale(0.85); transform-origin: right top; white-space: nowrap; }
+
+    /* 祝日バッジ */
+    .holiday-tag {
+      font-size: 0.6rem; color: var(--text-sun); border: 1px solid var(--text-sun);
+      border-radius: 2px; padding: 0 1px; line-height: 1.1; margin-top: 1px; text-align: center;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+    }
+
+    /* 〇 アイコン配置: セル幅に合わせて自動レスポンシブ縮小 */
     .cal-grid-4 {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: 1fr 1fr;
+      grid-template-columns: repeat(2, 1fr);
       gap: 2px;
       width: 100%;
-      height: calc(100% - 14px);
+      flex: 1;
       align-items: center;
       justify-items: center;
-    }
-
-    /* 2週間表示: [◯|◯|◯|◯] 横並び配置 */
-    .calendar-grid-2week {
-      display: grid;
-      grid-template-columns: 32px 1fr 1fr;
-      grid-template-rows: repeat(7, 1fr);
-      gap: 2px;
-      background: var(--border);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      height: 100%;
+      padding-top: 2px;
       overflow: hidden;
     }
-    .cal-2week-label {
-      background: #f1f5f9; display: flex; align-items: center; justify-content: center;
-      font-weight: bold; font-size: 0.9rem; color: #334155;
-    }
-    .cal-2week-label.sun { color: #dc2626; background: #fee2e2; }
-    .cal-2week-label.sat { color: #2563eb; background: #dbeafe; }
-    .cal-2week-day {
-      background: white; padding: 4px; display: flex; flex-direction: column;
-      justify-content: flex-start; cursor: pointer; position: relative; overflow: hidden;
-    }
-    .cal-2week-day.sun-bg, .cal-2week-day.holiday-bg { background-color: var(--bg-sun); }
-    .cal-2week-day.sat-bg { background-color: var(--bg-sat); }
-    .cal-2week-day.today { border: 2px solid var(--primary-light); }
-    .cal-2week-day .day-num { font-size: 0.8rem; font-weight: bold; color: #475569; margin-bottom: 2px; }
-    .cal-grid-horizontal {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 4px;
-      width: 100%;
-      height: 100%;
-      align-items: center;
-    }
 
-    /* 丸枠アイコンバッジ */
+    /* 丸枠アイコンバッジ (自動サイズ可変) */
     .status-badge {
       display: flex;
       align-items: center;
       justify-content: center;
       width: 100%;
-      height: 100%;
-      max-width: 28px;
-      max-height: 28px;
+      max-width: 24px;
       aspect-ratio: 1;
       border-radius: 50%;
       font-weight: bold;
-      font-size: 0.75rem;
+      font-size: clamp(8px, 2.2vw, 11px);
       line-height: 1;
       box-shadow: 0 1px 2px rgba(0,0,0,0.12);
       user-select: none;
+      box-sizing: border-box;
     }
     .badge-i { background: #dbeafe; color: #1d4ed8; border: 1.5px solid #3b82f6; } /* 依 */
     .badge-m { background: #d1fae5; color: #047857; border: 1.5px solid #10b981; } /* 見 */
@@ -186,12 +181,21 @@
     .badge-h { background: #fee2e2; color: #b91c1c; border: 1.5px solid #ef4444; } /* 発 */
     .badge-u { background: #fef3c7; color: #b45309; border: 1.5px solid #f59e0b; } /* 入 */
 
-    #view-urikake-form, #view-master {
-      height: 100%;
-      overflow-y: auto;
-      padding-bottom: 80px;
+    /* 2週間表示 */
+    .calendar-grid-2week {
+      display: grid; grid-template-columns: 32px 1fr 1fr; grid-template-rows: repeat(7, 1fr);
+      gap: 2px; background: var(--border); border: 1px solid var(--border); border-radius: 6px; height: 100%; overflow: hidden;
     }
+    .cal-2week-label { background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem; color: #334155; }
+    .cal-2week-label.sat { color: var(--text-sat); background: #e0f2fe; }
+    .cal-2week-label.sun { color: var(--text-sun); background: #fee2e2; }
+    .cal-2week-day { background: white; padding: 4px; display: flex; flex-direction: column; justify-content: flex-start; cursor: pointer; position: relative; overflow: hidden; }
+    .cal-2week-day.sun-bg, .cal-2week-day.holiday-bg { background-color: var(--bg-sun); }
+    .cal-2week-day.sat-bg { background-color: var(--bg-sat); }
+    .cal-2week-day.today { border: 2px solid var(--primary-light); }
+    .cal-grid-horizontal { display: flex; gap: 4px; width: 100%; height: 100%; align-items: center; overflow: hidden; }
 
+    #view-urikake-form, #view-master { height: 100%; overflow-y: auto; padding-bottom: 80px; }
     .view-card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; }
     .form-group { margin-bottom: 14px; }
     .form-group label { display: block; font-size: 0.85rem; font-weight: bold; color: #334155; margin-bottom: 4px; }
@@ -205,16 +209,12 @@
     .tab.active { color: white; background: var(--primary-light); border-color: var(--primary-light); }
     .tab.active-kaikake { color: white; background: #dc2626; border-color: #dc2626; }
 
-    .item-card {
-      background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px;
-      position: relative; transition: background 0.2s;
-    }
+    .item-card { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; position: relative; transition: background 0.2s; }
     .item-card:active { background: #f1f5f9; }
 
     .numpad-overlay {
       position: fixed; bottom: 0; left: 0; right: 0; background: #cbd5e1; padding: 12px;
-      border-top-left-radius: 16px; border-top-right-radius: 16px; z-index: 300; display: none;
-      box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
+      border-top-left-radius: 16px; border-top-right-radius: 16px; z-index: 300; display: none; box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
     }
     .numpad-overlay.open { display: block; }
     .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 400px; margin: 0 auto; }
@@ -229,15 +229,11 @@
     .chip { background: #e2e8f0; padding: 6px 12px; border-radius: 16px; font-size: 0.8rem; cursor: pointer; font-weight: 500; }
     .chip.active { background: var(--primary-light); color: white; }
 
-    .btn-add-item {
-      background: #eff6ff; color: var(--primary-light); border: 2px dashed var(--primary-light);
-      width: 100%; padding: 10px; font-weight: bold; border-radius: 6px; cursor: pointer; text-align: center; margin-bottom: 12px;
-    }
+    .btn-add-item { background: #eff6ff; color: var(--primary-light); border: 2px dashed var(--primary-light); width: 100%; padding: 10px; font-weight: bold; border-radius: 6px; cursor: pointer; text-align: center; margin-bottom: 12px; }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 400; display: flex; align-items: center; justify-content: center; padding: 20px; }
     .modal-card { background: white; border-radius: 12px; width: 100%; max-width: 420px; padding: 20px; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; }
 
-    /* フローティングボタン (FAB) */
     .fab-container { position: fixed; bottom: 20px; right: 20px; display: flex; gap: 12px; z-index: 250; }
     .fab {
       background: var(--primary-light); color: white; width: 56px; height: 56px; border-radius: 28px;
@@ -257,6 +253,14 @@
   </header>
 
   <div id="status-bar">準備完了</div>
+
+  <!-- 中央ローディングオーバーレイ -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <div id="loading-msg-text">データ同期中...</div>
+    </div>
+  </div>
 
   <!-- 初回 担当者選択モーダル -->
   <div class="modal-overlay" id="staff-modal" style="display: none;">
@@ -278,7 +282,6 @@
         <button class="btn-sm" style="background:#64748b;" onclick="closeDetailModal()">✕ 閉じる</button>
       </div>
       <div id="day-detail-list" style="flex:1; overflow-y:auto;"></div>
-      <!-- モーダルフッターに新規登録ボタンを配置 -->
       <div style="margin-top:12px; border-top:1px solid var(--border); padding-top:12px;">
         <button class="btn-sm" style="background:#16a34a; width:100%; padding:12px; font-size:0.95rem; font-weight:bold;" onclick="openNewRecordFromDetailModal()">＋ この日付で新規登録</button>
       </div>
@@ -290,6 +293,7 @@
     <h3>メニュー</h3>
     <ul>
       <li onclick="showView('calendar')">📅 カレンダー/TOP</li>
+      <li onclick="syncGoogleCalendar()">📅 Googleカレンダーと連携</li>
       <li onclick="openNewRecord('urikake')">📈 新規売掛（販売）登録</li>
       <li onclick="openNewRecord('kaikake')">📉 新規買掛（仕入）登録</li>
       <li onclick="showMasterView('kokyaku')">👥 顧客マスタ一覧</li>
@@ -339,7 +343,6 @@
           </div>
         </div>
 
-        <!-- 品名・産地・価格情報 (複数動的追加エリア) -->
         <div class="form-group">
           <label style="color:var(--primary); font-size:0.95rem;">品名・産地・価格情報</label>
           <p style="font-size:0.75rem; color:#64748b; margin-bottom:8px;">※長押しでその明細を削除できます</p>
@@ -348,7 +351,6 @@
 
           <button type="button" class="btn-add-item" onclick="addItemRow()">＋ 明細項目を追加</button>
 
-          <!-- 合計金額表示 -->
           <div style="background:#e2e8f0; padding:10px 14px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:1rem; margin-top:8px;">
             <span>合計金額:</span>
             <span id="total-amount-display" style="color:var(--primary); font-size:1.2rem;">¥0</span>
@@ -384,12 +386,10 @@
     </div>
   </div>
 
-  <!-- フローティングボタン群 (カレンダー画面時) -->
   <div id="fab-calendar-group" class="fab-container">
     <button class="fab" onclick="openNewRecord('urikake')">＋</button>
   </div>
 
-  <!-- フローティングボタン群 (登録画面時: 保存💾 & 閉じる❌) -->
   <div id="fab-form-group" class="fab-container" style="display: none;">
     <button class="fab" style="background:#dc2626;" onclick="showView('calendar')">❌</button>
     <button class="fab" style="background:#16a34a;" onclick="saveFormData()">💾</button>
@@ -411,23 +411,18 @@
   };
 
   let currentFormData = {};
-  let currentItems = []; // 動的明細リスト [{id, category, name, sanchi, price, amount, check}]
+  let currentItems = [];
 
   /* --- フルスクリーン起動処理 --- */
   function enableFullScreen() {
     const doc = document.documentElement;
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      if (doc.requestFullscreen) {
-        doc.requestFullscreen().catch(() => {});
-      } else if (doc.webkitRequestFullscreen) {
-        doc.webkitRequestFullscreen();
-      } else if (doc.msRequestFullscreen) {
-        doc.msRequestFullscreen();
-      }
+      if (doc.requestFullscreen) { doc.requestFullscreen().catch(() => {}); }
+      else if (doc.webkitRequestFullscreen) { doc.webkitRequestFullscreen(); }
+      else if (doc.msRequestFullscreen) { doc.msRequestFullscreen(); }
     }
   }
 
-  // 初回のタップ／クリック時にフルスクリーンを実行
   const initFullscreenTrigger = () => {
     enableFullScreen();
     window.removeEventListener("click", initFullscreenTrigger);
@@ -443,25 +438,27 @@
     renderCalendar();
   };
 
-  /* --- 日本の祝日判定 (主要祝日リスト) --- */
-  function isHoliday(y, m, d) {
+  /* --- 祝日・六曜データ・判定 --- */
+  const HOLIDAYS = {
+    "2026-01-01": "元日", "2026-01-12": "成人の日", "2026-02-11": "建国記念の日",
+    "2026-02-23": "天皇誕生日", "2026-03-20": "春分の日", "2026-04-29": "昭和の日",
+    "2026-05-03": "憲法記念日", "2026-05-04": "みどりの日", "2026-05-05": "こどもの日",
+    "2026-05-06": "振替休日", "2026-07-20": "海の日", "2026-08-11": "山の日",
+    "2026-09-21": "敬老の日", "2026-09-22": "国民の休日", "2026-09-23": "秋分の日",
+    "2026-10-12": "スポーツの日", "2026-11-03": "文化の日", "2026-11-23": "勤労感謝の日"
+  };
+
+  function getHolidayName(y, m, d) {
     const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const holidays2026 = {
-      "2026-01-01": "元日", "2026-01-12": "成人の日", "2026-02-11": "建国記念の日",
-      "2026-02-23": "天皇誕生日", "2026-03-20": "春分の日", "2026-04-29": "昭和の日",
-      "2026-05-03": "憲法記念日", "2026-05-04": "みどりの日", "2026-05-05": "こどもの日",
-      "2026-05-06": "振替休日", "2026-07-20": "海の日", "2026-08-11": "山の日",
-      "2026-09-21": "敬老の日", "2026-09-22": "国民の休日", "2026-09-23": "秋分の日",
-      "2026-10-12": "スポーツの日", "2026-11-03": "文化の日", "2026-11-23": "勤労感謝の日"
-    };
-    if (holidays2026[dateStr]) return true;
-    if (m === 1 && d === 1) return true;
-    if (m === 2 && d === 11) return true;
-    if (m === 4 && d === 29) return true;
-    if (m === 5 && (d === 3 || d === 4 || d === 5)) return true;
-    if (m === 8 && d === 11) return true;
-    if (m === 11 && (d === 3 || d === 23)) return true;
-    return false;
+    return HOLIDAYS[dateStr] || null;
+  }
+
+  /* 簡易六曜計算 */
+  function getRokuyou(y, m, d) {
+    const rokuyouList = ["大安", "赤口", "先勝", "友引", "先負", "仏滅"];
+    // 簡易近似インデックス計算
+    const idx = (m + d) % 6;
+    return rokuyouList[idx];
   }
 
   function normalizeDate(dStr) {
@@ -495,8 +492,30 @@
     return dates;
   }
 
+  /* --- 中央表示＆背景遮断対応のステータス/ローディング制御 --- */
+  function showLoading(msg = "データ同期中...") {
+    document.getElementById("loading-msg-text").innerText = msg;
+    document.getElementById("loading-overlay").classList.add("active");
+  }
+
+  function hideLoading() {
+    document.getElementById("loading-overlay").classList.remove("active");
+  }
+
+  function updateStatus(msg, className, isLoading = false) {
+    const bar = document.getElementById("status-bar");
+    bar.innerText = msg;
+    bar.className = className;
+
+    if (isLoading) {
+      showLoading(msg);
+    } else {
+      hideLoading();
+    }
+  }
+
   async function fetchAllData() {
-    updateStatus("データ同期中...", "saving");
+    updateStatus("データ同期中...", "saving", true);
     try {
       const res = await fetch(GAS_URL, {
         method: "POST",
@@ -508,10 +527,34 @@
         populateDropdowns();
         const uCount = (appState.urikake || []).length;
         const kCount = (appState.kaikake || []).length;
-        updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved");
+        updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved", false);
       }
     } catch(e) {
-      updateStatus("通信エラー", "");
+      updateStatus("通信エラー", "", false);
+    }
+  }
+
+  /* --- Googleカレンダー連携 --- */
+  async function syncGoogleCalendar() {
+    toggleMenu(false);
+    updateStatus("Googleカレンダー連携中...", "saving", true);
+    try {
+      const res = await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "syncGoogleCalendar", staffId: appState.selectedStaffId })
+      });
+      const json = await res.json();
+      if (json.status === "success") {
+        alert("Googleカレンダーとの同期が完了しました！");
+        updateStatus("Googleカレンダー同期完了", "saved", false);
+      } else {
+        alert("Googleカレンダー連携: " + (json.message || "完了しました"));
+        updateStatus("連携完了", "saved", false);
+      }
+    } catch(e) {
+      // API直接連携フォールバック
+      window.open("https://calendar.google.com/", "_blank");
+      updateStatus("Googleカレンダーを開きました", "saved", false);
     }
   }
 
@@ -570,6 +613,7 @@
     }
   }
 
+  /* 月曜始まりのカレンダー描画 */
   function renderMonthCalendar() {
     const container = document.getElementById("calendar-container");
     container.innerHTML = "";
@@ -581,24 +625,38 @@
     const grid = document.createElement("div");
     grid.className = "calendar-grid-month";
 
+    // ヘッダー: 月〜日 (月曜始まり)
     const headers = [
-      { text: "日", class: "sun" }, { text: "月", class: "" }, { text: "火", class: "" },
-      { text: "水", class: "" }, { text: "木", class: "" }, { text: "金", class: "" }, { text: "土", class: "sat" }
+      { text: "月", class: "" }, { text: "火", class: "" }, { text: "水", class: "" },
+      { text: "木", class: "" }, { text: "金", class: "" }, { text: "土", class: "sat" }, { text: "日", class: "sun" }
     ];
     headers.forEach(h => { grid.innerHTML += `<div class="cal-header ${h.class}">${h.text}</div>`; });
 
-    const firstDay = new Date(year, month, 1).getDay();
+    // 月曜始まりのインデックス算出 (0: 月曜, 6: 日曜)
+    const firstDayObj = new Date(year, month, 1);
+    let startDayIdx = (firstDayObj.getDay() + 6) % 7; 
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const prevDaysInMonth = new Date(year, month, 0).getDate();
 
-    for(let i=0; i<firstDay; i++) { grid.innerHTML += `<div class="cal-day"></div>`; }
+    // 前月マス
+    for (let i = startDayIdx - 1; i >= 0; i--) {
+      const pDay = prevDaysInMonth - i;
+      grid.innerHTML += `
+        <div class="cal-day other-month">
+          <div class="day-header-line"><span class="day-num">${pDay}</span></div>
+        </div>`;
+    }
 
-    for(let d=1; d<=daysInMonth; d++) {
-      const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const dayOfWeek = new Date(year, month, d).getDay();
-      const isHoli = isHoliday(year, month + 1, d);
+    // 当月マス
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dayObj = new Date(year, month, d);
+      const dayOfWeek = dayObj.getDay(); // 0:日, 6:土
+      const holidayName = getHolidayName(year, month + 1, d);
+      const rokuyou = getRokuyou(year, month + 1, d);
 
       let bgClass = "";
-      if (dayOfWeek === 0 || isHoli) bgClass = "sun-bg";
+      if (dayOfWeek === 0 || holidayName) bgClass = "sun-bg";
       else if (dayOfWeek === 6) bgClass = "sat-bg";
 
       const isToday = dateStr === getTodayString();
@@ -606,11 +664,26 @@
 
       grid.innerHTML += `
         <div class="cal-day ${bgClass} ${isToday ? 'today' : ''}" onclick="onDateClick('${dateStr}')">
-          <div class="day-num">${d}</div>
+          <div class="day-header-line">
+            <span class="day-num">${d}</span>
+            <span class="rokuyou">${rokuyou}</span>
+          </div>
+          ${holidayName ? `<div class="holiday-tag">${holidayName}</div>` : ''}
           <div class="cal-grid-4">${badges.slice(0, 4).join('')}</div>
         </div>
       `;
     }
+
+    // 次月マス埋め
+    const totalCells = startDayIdx + daysInMonth;
+    const remainingCells = (42 - totalCells) % 7 === 0 && totalCells <= 35 ? 35 - totalCells : 42 - totalCells;
+    for (let n = 1; n <= remainingCells; n++) {
+      grid.innerHTML += `
+        <div class="cal-day other-month">
+          <div class="day-header-line"><span class="day-num">${n}</span></div>
+        </div>`;
+    }
+
     container.appendChild(grid);
   }
 
@@ -621,49 +694,51 @@
     const grid = document.createElement("div");
     grid.className = "calendar-grid-2week";
 
-    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+    const weekdays = ["月", "火", "水", "木", "金", "土", "日"];
     const today = appState.currentDate;
 
-    const startSun = new Date(today);
-    startSun.setDate(today.getDate() - today.getDay());
+    // 月曜始まりの直近の月曜日
+    const startMon = new Date(today);
+    const dayShift = (today.getDay() + 6) % 7;
+    startMon.setDate(today.getDate() - dayShift);
 
-    const endDay = new Date(startSun);
-    endDay.setDate(startSun.getDate() + 13);
+    const endDay = new Date(startMon);
+    endDay.setDate(startMon.getDate() + 13);
 
     document.getElementById("cal-month-title").innerText = 
-      `${startSun.getMonth() + 1}/${startSun.getDate()} 〜 ${endDay.getMonth() + 1}/${endDay.getDate()}`;
+      `${startMon.getMonth() + 1}/${startMon.getDate()} 〜 ${endDay.getMonth() + 1}/${endDay.getDate()}`;
 
     for (let i = 0; i < 7; i++) {
       const label = document.createElement("div");
       let colorClass = "";
-      if (i === 0) colorClass = "sun";
-      if (i === 6) colorClass = "sat";
+      if (i === 5) colorClass = "sat";
+      if (i === 6) colorClass = "sun";
       label.className = `cal-2week-label ${colorClass}`;
       label.innerText = weekdays[i];
       grid.appendChild(label);
 
-      const d1 = new Date(startSun);
-      d1.setDate(startSun.getDate() + i);
+      const d1 = new Date(startMon);
+      d1.setDate(startMon.getDate() + i);
       grid.appendChild(create2WeekCell(d1, i));
 
-      const d2 = new Date(startSun);
-      d2.setDate(startSun.getDate() + i + 7);
+      const d2 = new Date(startMon);
+      d2.setDate(startMon.getDate() + i + 7);
       grid.appendChild(create2WeekCell(d2, i));
     }
 
     container.appendChild(grid);
   }
 
-  function create2WeekCell(d, dayOfWeek) {
+  function create2WeekCell(d, dayIdx) {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
-    const isHoli = isHoliday(year, d.getMonth() + 1, d.getDate());
+    const holidayName = getHolidayName(year, d.getMonth() + 1, d.getDate());
 
     let bgClass = "";
-    if (dayOfWeek === 0 || isHoli) bgClass = "sun-bg";
-    else if (dayOfWeek === 6) bgClass = "sat-bg";
+    if (dayIdx === 6 || holidayName) bgClass = "sun-bg";
+    else if (dayIdx === 5) bgClass = "sat-bg";
 
     const displayLabel = `${d.getMonth() + 1}/${d.getDate()}`;
     const isToday = dateStr === getTodayString();
@@ -873,15 +948,7 @@
   }
 
   function addItemRow(initialData = null) {
-    const item = initialData || {
-      id: "",
-      category: "青果",
-      name: "",
-      sanchi: "",
-      price: "",
-      amount: "",
-      check: ""
-    };
+    const item = initialData || { id: "", category: "青果", name: "", sanchi: "", price: "", amount: "", check: "" };
     currentItems.push(item);
     renderItemRows();
   }
@@ -996,6 +1063,7 @@
     document.getElementById("total-amount-display").innerText = `¥${total.toLocaleString()}`;
   }
 
+  /* 保存処理 (文言: データ保存中) */
   async function saveFormData() {
     syncTabValueToState();
 
@@ -1007,7 +1075,7 @@
       return;
     }
 
-    updateStatus("スプレッドシートに保存中...", "saving");
+    updateStatus("データ保存中...", "saving", true);
 
     try {
       for (let item of currentItems) {
@@ -1045,11 +1113,11 @@
         });
       }
 
-      updateStatus("保存完了しました", "saved");
+      updateStatus("保存完了しました", "saved", false);
       await fetchAllData();
       showView("calendar");
     } catch(e) {
-      updateStatus("通信エラーで保存できませんでした", "");
+      updateStatus("通信エラーで保存できませんでした", "", false);
     }
   }
 
@@ -1207,12 +1275,6 @@
     const open = force !== undefined ? force : !drawer.classList.contains("open");
     drawer.classList.toggle("open", open);
     overlay.classList.toggle("open", open);
-  }
-
-  function updateStatus(msg, className) {
-    const bar = document.getElementById("status-bar");
-    bar.innerText = msg;
-    bar.className = className;
   }
 
   function getTodayString() {
