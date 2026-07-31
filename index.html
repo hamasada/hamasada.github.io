@@ -108,7 +108,7 @@
     #cal-header-nav { display: flex; justify-content: space-between; align-items: center; height: 32px; flex-shrink: 0; margin-bottom: 4px; }
     #calendar-container { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
-    /* カレンダー表示: 月曜始まり */
+    /* カレンダー表示: 月曜始まり (月〜日) */
     .calendar-grid-month {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
@@ -146,7 +146,7 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
     }
 
-    /* 〇 アイコン配置 */
+    /* 〇 アイコン配置: セル幅に合わせて自動レスポンシブ縮小 */
     .cal-grid-4 {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -159,6 +159,7 @@
       overflow: hidden;
     }
 
+    /* 丸枠アイコンバッジ (自動サイズ可変) */
     .status-badge {
       display: flex;
       align-items: center;
@@ -208,8 +209,8 @@
     .tab.active { color: white; background: var(--primary-light); border-color: var(--primary-light); }
     .tab.active-kaikake { color: white; background: #dc2626; border-color: #dc2626; }
 
-    .item-card { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; position: relative; }
-    .item-card.discount-card { background: #fff5f5; border-color: #fca5a5; }
+    .item-card { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; position: relative; transition: background 0.2s; }
+    .item-card:active { background: #f1f5f9; }
 
     .numpad-overlay {
       position: fixed; bottom: 0; left: 0; right: 0; background: #cbd5e1; padding: 12px;
@@ -228,19 +229,7 @@
     .chip { background: #e2e8f0; padding: 6px 12px; border-radius: 16px; font-size: 0.8rem; cursor: pointer; font-weight: 500; }
     .chip.active { background: var(--primary-light); color: white; }
 
-    .btn-add-item {
-      background: #eff6ff; color: var(--primary-light); border: 2px dashed var(--primary-light);
-      padding: 10px; font-weight: bold; border-radius: 6px; cursor: pointer; text-align: center;
-    }
-    .btn-add-discount {
-      background: #fef2f2; color: #dc2626; border: 2px dashed #ef4444;
-      padding: 10px; font-weight: bold; border-radius: 6px; cursor: pointer; text-align: center;
-    }
-
-    .btn-cancel-item {
-      background: #ef4444; color: white; border: none; padding: 4px 10px;
-      font-size: 0.75rem; border-radius: 4px; cursor: pointer; font-weight: bold;
-    }
+    .btn-add-item { background: #eff6ff; color: var(--primary-light); border: 2px dashed var(--primary-light); width: 100%; padding: 10px; font-weight: bold; border-radius: 6px; cursor: pointer; text-align: center; margin-bottom: 12px; }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 400; display: flex; align-items: center; justify-content: center; padding: 20px; }
     .modal-card { background: white; border-radius: 12px; width: 100%; max-width: 420px; padding: 20px; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; }
@@ -356,14 +345,11 @@
 
         <div class="form-group">
           <label style="color:var(--primary); font-size:0.95rem;">品名・産地・価格情報</label>
+          <p style="font-size:0.75rem; color:#64748b; margin-bottom:8px;">※長押しでその明細を削除できます</p>
           
-          <div id="items-container" style="margin-top: 8px;"></div>
+          <div id="items-container"></div>
 
-          <!-- 横幅比率 2/3 : 1/3 ボタン配置 -->
-          <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 8px;">
-            <button type="button" class="btn-add-item" style="flex: 2;" onclick="addItemRow()">＋ 明細項目を追加</button>
-            <button type="button" class="btn-add-discount" style="flex: 1;" onclick="addDiscountRow()">＋ 値引き</button>
-          </div>
+          <button type="button" class="btn-add-item" onclick="addItemRow()">＋ 明細項目を追加</button>
 
           <div style="background:#e2e8f0; padding:10px 14px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:1rem; margin-top:8px;">
             <span>合計金額:</span>
@@ -467,8 +453,10 @@
     return HOLIDAYS[dateStr] || null;
   }
 
+  /* 簡易六曜計算 */
   function getRokuyou(y, m, d) {
     const rokuyouList = ["大安", "赤口", "先勝", "友引", "先負", "仏滅"];
+    // 簡易近似インデックス計算
     const idx = (m + d) % 6;
     return rokuyouList[idx];
   }
@@ -546,6 +534,7 @@
     }
   }
 
+  /* --- Googleカレンダー連携 --- */
   async function syncGoogleCalendar() {
     toggleMenu(false);
     updateStatus("Googleカレンダー連携中...", "saving", true);
@@ -563,6 +552,7 @@
         updateStatus("連携完了", "saved", false);
       }
     } catch(e) {
+      // API直接連携フォールバック
       window.open("https://calendar.google.com/", "_blank");
       updateStatus("Googleカレンダーを開きました", "saved", false);
     }
@@ -623,6 +613,7 @@
     }
   }
 
+  /* 月曜始まりのカレンダー描画 */
   function renderMonthCalendar() {
     const container = document.getElementById("calendar-container");
     container.innerHTML = "";
@@ -634,17 +625,20 @@
     const grid = document.createElement("div");
     grid.className = "calendar-grid-month";
 
+    // ヘッダー: 月〜日 (月曜始まり)
     const headers = [
       { text: "月", class: "" }, { text: "火", class: "" }, { text: "水", class: "" },
       { text: "木", class: "" }, { text: "金", class: "" }, { text: "土", class: "sat" }, { text: "日", class: "sun" }
     ];
     headers.forEach(h => { grid.innerHTML += `<div class="cal-header ${h.class}">${h.text}</div>`; });
 
+    // 月曜始まりのインデックス算出 (0: 月曜, 6: 日曜)
     const firstDayObj = new Date(year, month, 1);
     let startDayIdx = (firstDayObj.getDay() + 6) % 7; 
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const prevDaysInMonth = new Date(year, month, 0).getDate();
 
+    // 前月マス
     for (let i = startDayIdx - 1; i >= 0; i--) {
       const pDay = prevDaysInMonth - i;
       grid.innerHTML += `
@@ -653,10 +647,11 @@
         </div>`;
     }
 
+    // 当月マス
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dayObj = new Date(year, month, d);
-      const dayOfWeek = dayObj.getDay();
+      const dayOfWeek = dayObj.getDay(); // 0:日, 6:土
       const holidayName = getHolidayName(year, month + 1, d);
       const rokuyou = getRokuyou(year, month + 1, d);
 
@@ -679,6 +674,7 @@
       `;
     }
 
+    // 次月マス埋め
     const totalCells = startDayIdx + daysInMonth;
     const remainingCells = (42 - totalCells) % 7 === 0 && totalCells <= 35 ? 35 - totalCells : 42 - totalCells;
     for (let n = 1; n <= remainingCells; n++) {
@@ -701,6 +697,7 @@
     const weekdays = ["月", "火", "水", "木", "金", "土", "日"];
     const today = appState.currentDate;
 
+    // 月曜始まりの直近の月曜日
     const startMon = new Date(today);
     const dayShift = (today.getDay() + 6) % 7;
     startMon.setDate(today.getDate() - dayShift);
@@ -803,10 +800,10 @@
     } else {
       kaikakeItems.forEach(item => {
         const nakaoroshi = appState.nakaoroshi.find(n => 
-          String(n.仲卸ID || n.ID) === String(item.仲卸ID || item.顧客ID)
+          String(n.仲卸ID || n.ID || Object.values(n)[0]) === String(item.仲卸ID || item.顧客ID)
         ) || {};
-        const id = item.買掛ID || item.ID;
-        const title = item.依頼件名 || item.件名 || '（案件）';
+        const id = item.買掛ID || item.ID || Object.values(item)[0];
+        const title = item.依頼件名 || item.件名 || Object.values(item)[1] || '（案件）';
 
         list.innerHTML += `
           <div class="list-item" style="border-left: 4px solid #dc2626;" onclick="closeDetailModal(); openEditForm('${id}', 'kaikake')">
@@ -821,10 +818,10 @@
 
       urikakeItems.forEach(item => {
         const kokyaku = appState.kokyaku.find(k => 
-          String(k.顧客ID || k.ID) === String(item.顧客ID)
+          String(k.顧客ID || k.ID || Object.values(k)[0]) === String(item.顧客ID)
         ) || {};
-        const id = item.売掛ID || item.ID;
-        const title = item.依頼件名 || item.件名 || '（案件）';
+        const id = item.売掛ID || item.ID || Object.values(item)[0];
+        const title = item.依頼件名 || item.件名 || Object.values(item)[1] || '（案件）';
 
         list.innerHTML += `
           <div class="list-item" style="border-left: 4px solid #2563eb;" onclick="closeDetailModal(); openEditForm('${id}', 'urikake')">
@@ -874,8 +871,8 @@
       partnerLabel.innerText = "仲卸・担当";
       partnerSelect.innerHTML = `<option value="">仲卸選択</option>`;
       appState.nakaoroshi.forEach(n => {
-        const id = n.仲卸ID || n.ID || "";
-        const name = n.仲卸名 || "名称未設定";
+        const id = n.仲卸ID || n.ID || Object.values(n)[0] || "";
+        const name = n.仲卸名 || n.名前 || n.社名 || Object.values(n)[1] || "名称未設定";
         partnerSelect.innerHTML += `<option value="${id}">${name}</option>`;
       });
 
@@ -890,8 +887,8 @@
       partnerLabel.innerText = "顧客・担当";
       partnerSelect.innerHTML = `<option value="">顧客選択</option>`;
       appState.kokyaku.forEach(k => {
-        const id = k.顧客ID || k.ID || "";
-        const name = k.顧客名 || "名称未設定";
+        const id = k.顧客ID || k.ID || Object.values(k)[0] || "";
+        const name = k.顧客名 || k.名前 || k.社名 || Object.values(k)[1] || "名称未設定";
         partnerSelect.innerHTML += `<option value="${id}">${name}</option>`;
       });
 
@@ -927,8 +924,8 @@
     mSelect.innerHTML = `<option value="">担当者を選択...</option>`;
 
     appState.tando.forEach(t => {
-      const id = t.担当ID || t.ID || "";
-      const name = t.担当名 || t.担当者名 || "名称未設定";
+      const id = t.担当ID || t.ID || t.担当コード || Object.values(t)[0] || "";
+      const name = t.担当名 || t.担当者名 || t.名前 || t.氏名 || Object.values(t)[1] || "名称未設定";
       if (id || name) {
         tSelect.innerHTML += `<option value="${id}">${name}</option>`;
         mSelect.innerHTML += `<option value="${id}">${name}</option>`;
@@ -950,28 +947,12 @@
     }
   }
 
-  /* 明細追加機能 */
   function addItemRow(initialData = null) {
-    const item = initialData || { id: "", category: "青果", name: "", sanchi: "", price: "", amount: "", check: "", isDiscount: false };
+    const item = initialData || { id: "", category: "青果", name: "", sanchi: "", price: "", amount: "", check: "" };
     currentItems.push(item);
     renderItemRows();
   }
 
-  /* 「＋値引き」追加機能 */
-  function addDiscountRow() {
-    const item = { id: "", category: "値引き", name: "値引き", sanchi: "", price: "", amount: "", check: "", isDiscount: true };
-    currentItems.push(item);
-    renderItemRows();
-  }
-
-  function formatDiscountDisplay(val) {
-    if (val === "" || val === null || val === undefined) return "";
-    const num = Math.abs(Number(val));
-    if (isNaN(num) || num === 0) return "";
-    return `▲ ${num.toLocaleString()}`;
-  }
-
-  /* 明細一覧レンダリング */
   function renderItemRows() {
     const container = document.getElementById("items-container");
     container.innerHTML = "";
@@ -979,56 +960,48 @@
     currentItems.forEach((item, index) => {
       if (item.check === 'X') return;
 
-      const isDiscount = item.isDiscount || item.category === '値引き' || String(item.name).includes("値引き");
-
       const card = document.createElement("div");
-      card.className = `item-card ${isDiscount ? 'discount-card' : ''}`;
+      card.className = "item-card";
+      
+      let pressTimer;
+      const startPress = () => {
+        pressTimer = setTimeout(() => {
+          if (confirm(`明細 #${index + 1}（${item.name || '未設定'}）を削除しますか？`)) {
+            deleteItemRow(index);
+          }
+        }, 700);
+      };
+      const cancelPress = () => clearTimeout(pressTimer);
 
-      if (isDiscount) {
-        // --- 値引き用カードレイアウト ---
-        card.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <span style="font-weight:bold; font-size:0.85rem; color:#dc2626;">値引き #${index + 1}</span>
-            <button type="button" class="btn-cancel-item" onclick="deleteItemRow(${index})">取消し</button>
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" class="form-control" placeholder="品名" value="${item.name}" oninput="currentItems[${index}].name=this.value" style="flex: 1;">
-            <input type="text" class="form-control" placeholder="値引き額" value="${formatDiscountDisplay(item.amount)}" readonly onclick="openNumpad(${index}, 'amount')" style="flex: 1; color: #dc2626; font-weight: bold;">
-          </div>
-        `;
-      } else {
-        // --- 通常明細用カードレイアウト ---
-        card.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <span style="font-weight:bold; font-size:0.85rem; color:var(--primary);">明細 #${index + 1}</span>
-            <button type="button" class="btn-cancel-item" onclick="deleteItemRow(${index})">取消し</button>
-          </div>
-          <div class="chip-group" style="margin-bottom: 8px;">
-            <div class="chip ${item.category === '青果' ? 'active' : ''}" onclick="selectItemCategory(${index}, '青果')">青果</div>
-            <div class="chip ${item.category === '水産' ? 'active' : ''}" onclick="selectItemCategory(${index}, '水産')">水産</div>
-          </div>
-          <select class="form-control" style="margin-bottom:6px;" onchange="onItemSelectChange(${index}, this.value)" id="item-sel-${index}">
-            <option value="">マスタ選択...</option>
-          </select>
-          <div class="chip-group" id="sanchi-chips-${index}" style="margin-bottom:6px;"></div>
-          
-          <!-- 品名・産地を横並び1行 -->
-          <div style="display: flex; gap: 8px; margin-bottom: 6px;">
-            <input type="text" class="form-control" placeholder="品名" value="${item.name}" oninput="currentItems[${index}].name=this.value" style="flex: 1;">
-            <input type="text" class="form-control" placeholder="産地" value="${item.sanchi}" oninput="currentItems[${index}].sanchi=this.value" style="flex: 1;">
-          </div>
+      card.addEventListener("touchstart", startPress, { passive: true });
+      card.addEventListener("touchend", cancelPress, { passive: true });
+      card.addEventListener("mousedown", startPress);
+      card.addEventListener("mouseup", cancelPress);
+      card.addEventListener("mouseleave", cancelPress);
 
-          <div style="display: flex; gap: 8px;">
-            <input type="number" class="form-control" placeholder="単価" value="${item.price}" readonly onclick="openNumpad(${index}, 'price')" style="flex: 1;">
-            <input type="number" class="form-control" placeholder="金額" value="${item.amount}" readonly onclick="openNumpad(${index}, 'amount')" style="flex: 1;">
-          </div>
-        `;
-      }
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-weight:bold; font-size:0.85rem; color:var(--primary);">明細 #${index + 1}</span>
+          <span style="font-size:0.75rem; color:#dc2626;">(長押しで削除)</span>
+        </div>
+        <div class="chip-group" style="margin-bottom: 8px;">
+          <div class="chip ${item.category === '青果' ? 'active' : ''}" onclick="selectItemCategory(${index}, '青果')">青果</div>
+          <div class="chip ${item.category === '水産' ? 'active' : ''}" onclick="selectItemCategory(${index}, '水産')">水産</div>
+        </div>
+        <select class="form-control" style="margin-bottom:6px;" onchange="onItemSelectChange(${index}, this.value)" id="item-sel-${index}">
+          <option value="">マスタ選択...</option>
+        </select>
+        <div class="chip-group" id="sanchi-chips-${index}" style="margin-bottom:6px;"></div>
+        <input type="text" class="form-control" placeholder="品名" value="${item.name}" oninput="currentItems[${index}].name=this.value" style="margin-bottom:4px;">
+        <input type="text" class="form-control" placeholder="産地" value="${item.sanchi}" oninput="currentItems[${index}].sanchi=this.value" style="margin-bottom:8px;">
+        <div style="display: flex; gap: 8px;">
+          <input type="number" class="form-control" placeholder="単価" value="${item.price}" readonly onclick="openNumpad(${index}, 'price')">
+          <input type="number" class="form-control" placeholder="金額" value="${item.amount}" readonly onclick="openNumpad(${index}, 'amount')">
+        </div>
+      `;
 
       container.appendChild(card);
-      if (!isDiscount) {
-        populateItemDropdown(index);
-      }
+      populateItemDropdown(index);
     });
 
     calculateTotalAmount();
@@ -1071,7 +1044,6 @@
     renderItemRows();
   }
 
-  /* 取消し（論理削除）処理 */
   function deleteItemRow(index) {
     if (currentItems[index].id) {
       currentItems[index].check = 'X';
@@ -1085,19 +1057,13 @@
     let total = 0;
     currentItems.forEach(item => {
       if (item.check !== 'X') {
-        const isDiscount = item.isDiscount || item.category === '値引き' || String(item.name).includes("値引き");
-        const amt = Math.abs(Number(item.amount) || 0);
-        if (isDiscount) {
-          total -= amt;
-        } else {
-          total += amt;
-        }
+        total += Number(item.amount) || 0;
       }
     });
     document.getElementById("total-amount-display").innerText = `¥${total.toLocaleString()}`;
   }
 
-  /* 保存処理 (文言: データ保存中 / 値引き項目マイナス数値変換) */
+  /* 保存処理 (文言: データ保存中) */
   async function saveFormData() {
     syncTabValueToState();
 
@@ -1113,13 +1079,6 @@
 
     try {
       for (let item of currentItems) {
-        const isDiscount = item.isDiscount || item.category === '値引き' || String(item.name).includes("値引き");
-        
-        let rawAmount = Number(item.amount) || 0;
-        if (isDiscount) {
-          rawAmount = -Math.abs(rawAmount); // 値引きはマイナス数値化
-        }
-
         const formData = {
           "売掛ID": isKaikake ? "" : item.id,
           "買掛ID": isKaikake ? item.id : "",
@@ -1128,11 +1087,11 @@
           "顧客ID": isKaikake ? "" : document.getElementById("u-顧客ID").value,
           "仲卸ID": isKaikake ? document.getElementById("u-顧客ID").value : "",
           "担当ID": document.getElementById("u-担当ID").value,
-          "品名": item.name || (isDiscount ? "値引き" : ""),
-          "産地": item.sanchi || "",
-          "単価": item.price || "",
-          "販売金額": rawAmount,
-          "仕入金額": rawAmount,
+          "品名": item.name,
+          "産地": item.sanchi,
+          "単価": item.price,
+          "販売金額": item.amount,
+          "仕入金額": item.amount,
           "チェック": item.check || "",
           "依頼日": currentFormData["依頼日"] || "",
           "発注日": currentFormData["発注日"] || currentFormData["依頼日"] || "",
@@ -1196,7 +1155,6 @@
     document.getElementById("numpad").classList.add("open");
   }
   function closeNumpad() { document.getElementById("numpad").classList.remove("open"); }
-  
   function npInput(val) {
     if (appState.currentNumTargetIndex !== null) {
       const idx = appState.currentNumTargetIndex;
@@ -1250,7 +1208,7 @@
     const dataset = type === 'kaikake' ? appState.kaikake : appState.urikake;
     const idKey = type === 'kaikake' ? '買掛ID' : '売掛ID';
     
-    const firstItem = dataset.find(d => String(d[idKey] || d.ID).trim() === String(id).trim());
+    const firstItem = dataset.find(d => String(d[idKey] || d.ID || Object.values(d)[0]).trim() === String(id).trim());
     if(!firstItem) return;
 
     currentFormData = { ...firstItem };
@@ -1263,20 +1221,15 @@
       String(d[idKey] || d.ID) === String(id)
     );
 
-    currentItems = relatedItems.map(item => {
-      const amt = Number(item.販売金額 || item.仕入金額 || 0);
-      const isDisc = String(item.品名).includes("値引き") || amt < 0;
-      return {
-        id: item[idKey] || item.ID || "",
-        category: isDisc ? "値引き" : "青果",
-        name: item.品名 || "",
-        sanchi: item.産地 || "",
-        price: item.単価 || "",
-        amount: Math.abs(amt),
-        check: item.チェック || "",
-        isDiscount: isDisc
-      };
-    });
+    currentItems = relatedItems.map(item => ({
+      id: item[idKey] || item.ID || "",
+      category: "青果",
+      name: item.品名 || "",
+      sanchi: item.産地 || "",
+      price: item.単価 || "",
+      amount: item.販売金額 || item.仕入金額 || "",
+      check: item.チェック || ""
+    }));
 
     if (currentItems.length === 0) addItemRow();
 
@@ -1286,7 +1239,6 @@
     showView('urikake');
   }
 
-  /* 新「顧客」「仲卸」レイアウトに対応したマスタ一覧表示 */
   function showMasterView(type) {
     showView('master');
     const list = document.getElementById("master-list");
@@ -1298,70 +1250,22 @@
     document.getElementById("master-title").innerText = titleMap[type];
 
     (dataMap[type] || []).forEach(m => {
-      if (type === 'kokyaku') {
-        const name = m.顧客名 || "（名前なし）";
-        const post = m.役職 ? `${m.役職} ` : "";
-        const staff = m.担当者 ? `担当: ${post}${m.担当者}` : "";
-        const tel = m.顧客携帯 || m.顧客TEL || "";
-        const mail = m.顧客メール || "";
-        const addr = m.顧客住所 ? `〒${m.顧客〒 || ''} ${m.顧客住所}` : "";
+      const name = m.顧客名 || m.仲卸名 || m.担当名 || "（名前なし）";
+      const tel = m.顧客TEL || m.仲卸TEL || m.担当TEL || "";
+      const mail = m.顧客メール || m.仲卸メール || m.担当メール || "";
 
-        list.innerHTML += `
-          <div class="list-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
-            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-              <div class="title" style="font-size:1rem; color:var(--primary);">${name}</div>
-              <div>
-                ${tel ? `<a href="tel:${tel}" style="text-decoration:none; margin-right:8px; font-size:1.1rem;">📞</a>` : ''}
-                ${mail ? `<a href="mailto:${mail}" style="text-decoration:none; font-size:1.1rem;">✉</a>` : ''}
-              </div>
-            </div>
-            ${staff ? `<div class="sub" style="color:#475569; font-weight:bold;">${staff}</div>` : ''}
-            <div class="sub">TEL: ${m.顧客TEL || '-'} / 携帯: ${m.顧客携帯 || '-'}</div>
-            ${mail ? `<div class="sub">メール: ${mail}</div>` : ''}
-            ${addr ? `<div class="sub" style="font-size:0.75rem; color:#64748b;">${addr}</div>` : ''}
+      list.innerHTML += `
+        <div class="list-item">
+          <div>
+            <div class="title">${name}</div>
+            <div class="sub">TEL: ${tel || 'なし'}</div>
           </div>
-        `;
-      } else if (type === 'nakaoroshi') {
-        const name = m.仲卸名 || "（名前なし）";
-        const post = m.役職 ? `${m.役職} ` : "";
-        const staff = m.担当者 ? `担当: ${post}${m.担当者}` : "";
-        const tel = m.仲卸携帯 || m.仲卸TEL || "";
-        const mail = m.仲卸メール || "";
-        const addr = m.仲卸住所 ? `〒${m.仲卸〒 || ''} ${m.仲卸住所}` : "";
-
-        list.innerHTML += `
-          <div class="list-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
-            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-              <div class="title" style="font-size:1rem; color:var(--primary);">${name}</div>
-              <div>
-                ${tel ? `<a href="tel:${tel}" style="text-decoration:none; margin-right:8px; font-size:1.1rem;">📞</a>` : ''}
-                ${mail ? `<a href="mailto:${mail}" style="text-decoration:none; font-size:1.1rem;">✉</a>` : ''}
-              </div>
-            </div>
-            ${staff ? `<div class="sub" style="color:#475569; font-weight:bold;">${staff}</div>` : ''}
-            <div class="sub">TEL: ${m.仲卸TEL || '-'} / 携帯: ${m.仲卸携帯 || '-'}</div>
-            ${mail ? `<div class="sub">メール: ${mail}</div>` : ''}
-            ${addr ? `<div class="sub" style="font-size:0.75rem; color:#64748b;">${addr}</div>` : ''}
+          <div>
+            ${tel ? `<a href="tel:${tel}" style="text-decoration:none; margin-right:8px;">📞</a>` : ''}
+            ${mail ? `<a href="mailto:${mail}" style="text-decoration:none;">✉</a>` : ''}
           </div>
-        `;
-      } else {
-        const name = m.担当名 || m.担当者名 || "（名前なし）";
-        const tel = m.担当TEL || "";
-        const mail = m.担当メール || "";
-
-        list.innerHTML += `
-          <div class="list-item">
-            <div>
-              <div class="title">${name}</div>
-              <div class="sub">TEL: ${tel || 'なし'}</div>
-            </div>
-            <div>
-              ${tel ? `<a href="tel:${tel}" style="text-decoration:none; margin-right:8px;">📞</a>` : ''}
-              ${mail ? `<a href="mailto:${mail}" style="text-decoration:none;">✉</a>` : ''}
-            </div>
-          </div>
-        `;
-      }
+        </div>
+      `;
     });
   }
 
