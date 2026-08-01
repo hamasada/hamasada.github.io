@@ -544,7 +544,7 @@
   </div>
 
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbwpk4E9CO5v-jI9TMI8eVxzetweDH6JdMYKBiM_XhW9H2LacPJfzoMVdoMwcfcNSdmt/exec";
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbxhde_85UIhRz4sabctBDeWOBST7Bm2-9Blv2GFJDxpnKXuo91Ns8OMe1XydxXii16q/exec";
 
   const GOOGLE_CLIENT_ID = "154863690218-sm6g80n7kppslgt72qpu5939er0g7pfc.apps.googleusercontent.com";
   const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
@@ -732,6 +732,8 @@
         appState.seika = json.data.seika || [];
         appState.suisan = json.data.suisan || [];
         populateDropdowns();
+      } else {
+        updateStatus("⚠️ マスタデータの取得に失敗しました（GASの再デプロイが必要な可能性があります）", "", false);
       }
     } catch(e) {
       updateStatus("マスタデータの取得に失敗しました", "", false);
@@ -763,6 +765,8 @@
     const json = await res.json();
     if (json.status === "success" && json.data) {
       replaceTransactionsInRange(startStr, endStr, json.data.urikake || [], json.data.kaikake || []);
+    } else {
+      updateStatus("⚠️ 売掛買掛データの取得に失敗しました（GASの再デプロイが必要な可能性があります）", "", false);
     }
   }
 
@@ -2187,7 +2191,8 @@
   }
 
   function getTodayString() {
-    return new Date().toISOString().split('T')[0];
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 </script>
 </body>
