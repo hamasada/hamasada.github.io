@@ -263,7 +263,7 @@
   <header>
     <h1>濱貞アプリ</h1>
     <div class="header-btns" id="header-controls">
-      <button class="btn-sm" onclick="toggleCalendarView()" id="cal-toggle-btn">2週間表示</button>
+      <button class="btn-sm" onclick="toggleCalendarView()" id="cal-toggle-btn">月表示</button>
       <button class="menu-btn" onclick="toggleMenu()">☰</button>
     </div>
   </header>
@@ -350,14 +350,10 @@
   <div class="drawer" id="drawer">
     <h3>メニュー</h3>
     <ul>
-      <li onclick="showView('calendar')">📅 カレンダー/TOP</li>
-      <li id="gcal-menu-item" onclick="handleGoogleCalendarMenuClick()">📅 Googleカレンダー連携</li>
-      <li onclick="openNewRecord('urikake')">📈 新規売掛（販売）登録</li>
-      <li onclick="openNewRecord('kaikake')">📉 新規買掛（仕入）登録</li>
       <li onclick="showMasterView('kokyaku')">👥 顧客台帳</li>
       <li onclick="showMasterView('nakaoroshi')">🏢 仲卸台帳</li>
-      <li onclick="showMasterView('tando')">👨‍💼 担当者マスタ一覧</li>
-      <li onclick="resetStaffCache()" style="color:#dc2626; margin-top:20px;">🔄 担当者再選択（キャッシュ消去）</li>
+      <li onclick="showMasterView('tando')">👨‍💼 担当者台帳</li>
+      <li id="gcal-menu-item" onclick="handleGoogleCalendarMenuClick()">📅 Googleカレンダー連携</li>
     </ul>
   </div>
 
@@ -435,11 +431,11 @@
           <label>名称 <span style="color:#dc2626;">*</span></label>
           <input type="text" class="form-control" id="me-name" placeholder="例: 〇〇商店">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="me-group-yakushoku">
           <label>役職</label>
           <input type="text" class="form-control" id="me-yakushoku" placeholder="例: 店長">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="me-group-tantosha">
           <label>担当者</label>
           <input type="text" class="form-control" id="me-tantosha" placeholder="例: 山田 太郎">
         </div>
@@ -447,7 +443,7 @@
           <label>携帯番号</label>
           <input type="tel" class="form-control" id="me-keitai" placeholder="090-0000-0000">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="me-group-tel">
           <label>TEL</label>
           <input type="tel" class="form-control" id="me-tel" placeholder="03-0000-0000">
         </div>
@@ -459,15 +455,15 @@
           <label>メールアドレス</label>
           <input type="email" class="form-control" id="me-mail" placeholder="example@mail.com">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="me-group-hp">
           <label>ホームページURL</label>
           <input type="text" class="form-control" id="me-hp" placeholder="https://">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="me-group-yubin">
           <label>郵便番号</label>
           <input type="text" class="form-control" id="me-yubin" placeholder="000-0000">
         </div>
-        <div class="form-group" style="margin-bottom:0;">
+        <div class="form-group" id="me-group-jusho" style="margin-bottom:0;">
           <label>住所</label>
           <textarea class="form-control" id="me-jusho" rows="2" placeholder="住所を入力（🗺マップ表示に使用）"></textarea>
         </div>
@@ -538,6 +534,7 @@
   </div>
 
   <div id="fab-master-list-group" class="fab-container" style="display: none;">
+    <button class="fab" id="fab-cache-clear-btn" style="background:#f59e0b; display:none;" onclick="resetStaffCache()">🧹</button>
     <button class="fab" onclick="openMasterNew(appState.currentMasterType)">＋</button>
   </div>
 
@@ -555,7 +552,7 @@
   let appState = {
     urikake: [], kaikake: [], kokyaku: [], nakaoroshi: [], tando: [], seika: [], suisan: [],
     currentDate: new Date(),
-    calViewMode: 'month',
+    calViewMode: '2week',
     currentFormType: 'urikake',
     isEditMode: false,
     activeTab: '依頼',
@@ -571,7 +568,9 @@
     googleAccessToken: null,
     googleTokenExpiry: 0,
     googleCalendars: [],
-    googleEventsByDate: {}
+    googleEventsByDate: {},
+    loadedStart: null,
+    loadedEnd: null
   };
 
   let googleTokenClient = null;
@@ -599,7 +598,16 @@
 
   window.onload = async () => {
     initSwipeEvents();
-    await fetchAllData();
+    updateStatus("データ同期中...", "saving", true);
+    try {
+      await fetchMasterData();
+      await loadInitialTransactionWindow();
+      const uCount = (appState.urikake || []).length;
+      const kCount = (appState.kaikake || []).length;
+      updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved", false);
+    } catch(e) {
+      updateStatus("通信エラー", "", false);
+    }
     checkStaffSelection();
     await restoreGoogleAuth();
     renderCalendar();
@@ -681,24 +689,118 @@
     }
   }
 
-  async function fetchAllData() {
-    updateStatus("データ同期中...", "saving", true);
+  function formatDateForRange(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  /* 2週間表示の基準範囲（前週：左, 今週：右）を返す */
+  function get2WeekWindowBounds(refDate) {
+    const dayShift = (refDate.getDay() + 6) % 7;
+    const startMon = new Date(refDate);
+    startMon.setDate(refDate.getDate() - dayShift - 7);
+    const endSun = new Date(startMon);
+    endSun.setDate(startMon.getDate() + 13);
+    return { startMon, endSun };
+  }
+
+  function getCurrentViewDateRangeStrings() {
+    if (appState.calViewMode === 'month') {
+      const year = appState.currentDate.getFullYear();
+      const month = appState.currentDate.getMonth();
+      const start = new Date(year, month, 1);
+      start.setDate(start.getDate() - 7);
+      const end = new Date(year, month + 1, 0);
+      end.setDate(end.getDate() + 7);
+      return { start: formatDateForRange(start), end: formatDateForRange(end) };
+    }
+    const { startMon, endSun } = get2WeekWindowBounds(appState.currentDate);
+    return { start: formatDateForRange(startMon), end: formatDateForRange(endSun) };
+  }
+
+  /* --- マスタデータ（顧客・仲卸・担当・青果・水産）の取得 --- */
+  async function fetchMasterData() {
     try {
       const res = await fetch(GAS_URL, {
         method: "POST",
-        body: JSON.stringify({ action: "getAllData" })
+        body: JSON.stringify({ action: "getMasterData" })
       });
       const json = await res.json();
-      if(json.status === "success") {
-        appState = { ...appState, ...json.data };
+      if (json.status === "success") {
+        appState.kokyaku = json.data.kokyaku || [];
+        appState.nakaoroshi = json.data.nakaoroshi || [];
+        appState.tando = json.data.tando || [];
+        appState.seika = json.data.seika || [];
+        appState.suisan = json.data.suisan || [];
         populateDropdowns();
-        const uCount = (appState.urikake || []).length;
-        const kCount = (appState.kaikake || []).length;
-        updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved", false);
       }
     } catch(e) {
-      updateStatus("通信エラー", "", false);
+      updateStatus("マスタデータの取得に失敗しました", "", false);
     }
+  }
+
+  const URIKAKE_DATE_COLS = ['依頼日','見積日','納品日','請求日','入金日','キャンセル日'];
+  const KAIKAKE_DATE_COLS = ['発注日','市場開場日','入荷日','請求日','支払日','キャンセル日'];
+
+  function rowInDateRange(row, cols, startStr, endStr) {
+    return cols.some(c => {
+      const v = normalizeDate(row[c]);
+      return v && v >= startStr && v <= endStr;
+    });
+  }
+
+  function replaceTransactionsInRange(startStr, endStr, newUrikake, newKaikake) {
+    appState.urikake = (appState.urikake || []).filter(r => !rowInDateRange(r, URIKAKE_DATE_COLS, startStr, endStr));
+    appState.kaikake = (appState.kaikake || []).filter(r => !rowInDateRange(r, KAIKAKE_DATE_COLS, startStr, endStr));
+    appState.urikake.push(...newUrikake);
+    appState.kaikake.push(...newKaikake);
+  }
+
+  async function fetchTransactionRange(startStr, endStr) {
+    const res = await fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "getTransactionsByRange", startDate: startStr, endDate: endStr })
+    });
+    const json = await res.json();
+    if (json.status === "success" && json.data) {
+      replaceTransactionsInRange(startStr, endStr, json.data.urikake || [], json.data.kaikake || []);
+    }
+  }
+
+  /**
+   * 指定範囲の売掛・買掛データが未読込みの場合のみサーバーへ取得しに行く。
+   * forceRefresh=true の場合はキャッシュ済みでも強制的に再取得する（保存直後の反映用）。
+   */
+  async function ensureTransactionsLoaded(startStr, endStr, forceRefresh = false) {
+    if (!forceRefresh && appState.loadedStart && appState.loadedEnd &&
+        startStr >= appState.loadedStart && endStr <= appState.loadedEnd) {
+      return;
+    }
+
+    let fetchStart = startStr;
+    let fetchEnd = endStr;
+
+    if (!forceRefresh && appState.loadedStart && appState.loadedEnd) {
+      const overlapsOrAdjacent = !(endStr < appState.loadedStart || startStr > appState.loadedEnd);
+      if (overlapsOrAdjacent) {
+        fetchStart = startStr < appState.loadedStart ? startStr : appState.loadedStart;
+        fetchEnd = endStr > appState.loadedEnd ? endStr : appState.loadedEnd;
+      }
+    }
+
+    await fetchTransactionRange(fetchStart, fetchEnd);
+
+    if (!appState.loadedStart || fetchStart < appState.loadedStart) appState.loadedStart = fetchStart;
+    if (!appState.loadedEnd || fetchEnd > appState.loadedEnd) appState.loadedEnd = fetchEnd;
+  }
+
+  /* 起動時：前ページ・現在ページ（前週＋今週）・次ページの3ページ分のみ読込む */
+  async function loadInitialTransactionWindow() {
+    const range = getCurrentViewDateRangeStrings();
+    const startDate = new Date(range.start);
+    startDate.setDate(startDate.getDate() - 14);
+    const endDate = new Date(range.end);
+    endDate.setDate(endDate.getDate() + 14);
+    await ensureTransactionsLoaded(formatDateForRange(startDate), formatDateForRange(endDate));
   }
 
   /* --- Googleカレンダー連携 (Google Identity Services によるOAuth) --- */
@@ -961,6 +1063,7 @@
   }
 
   function resetStaffCache() {
+    if (!confirm("担当者キャッシュを消去し、再選択画面に戻りますか？")) return;
     localStorage.removeItem("hamasada_staff_id");
     appState.selectedStaffId = "";
     location.reload();
@@ -1084,18 +1187,10 @@
     grid.className = "calendar-grid-2week";
 
     const weekdays = ["月", "火", "水", "木", "金", "土", "日"];
-    const today = appState.currentDate;
-
-    // 月曜始まりの直近の月曜日
-    const startMon = new Date(today);
-    const dayShift = (today.getDay() + 6) % 7;
-    startMon.setDate(today.getDate() - dayShift);
-
-    const endDay = new Date(startMon);
-    endDay.setDate(startMon.getDate() + 13);
+    const { startMon, endSun } = get2WeekWindowBounds(appState.currentDate);
 
     document.getElementById("cal-month-title").innerText = 
-      `${startMon.getMonth() + 1}/${startMon.getDate()} 〜 ${endDay.getMonth() + 1}/${endDay.getDate()}`;
+      `${startMon.getMonth() + 1}/${startMon.getDate()} 〜 ${endSun.getMonth() + 1}/${endSun.getDate()}`;
 
     for (let i = 0; i < 7; i++) {
       const label = document.createElement("div");
@@ -1162,25 +1257,128 @@
     return [...new Set(badges)];
   }
 
-  function moveCalendar(delta) {
+  async function moveCalendar(delta) {
     if (appState.calViewMode === 'month') {
       appState.currentDate.setMonth(appState.currentDate.getMonth() + delta);
     } else {
       appState.currentDate.setDate(appState.currentDate.getDate() + (delta * 14));
     }
+    updateStatus("読込み中...", "saving", true);
+    const range = getCurrentViewDateRangeStrings();
+    await ensureTransactionsLoaded(range.start, range.end);
+    const uCount = (appState.urikake || []).length;
+    const kCount = (appState.kaikake || []).length;
+    updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved", false);
     renderCalendar();
     if (appState.googleAuthed) {
       fetchGoogleEventsForCheckedCalendars().then(renderCalendar);
     }
   }
 
-  function toggleCalendarView() {
+  async function toggleCalendarView() {
     appState.calViewMode = appState.calViewMode === 'month' ? '2week' : 'month';
     document.getElementById("cal-toggle-btn").innerText = appState.calViewMode === 'month' ? '2週間表示' : '月表示';
+    updateStatus("読込み中...", "saving", true);
+    const range = getCurrentViewDateRangeStrings();
+    await ensureTransactionsLoaded(range.start, range.end);
+    const uCount = (appState.urikake || []).length;
+    const kCount = (appState.kaikake || []).length;
+    updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved", false);
     renderCalendar();
     if (appState.googleAuthed) {
       fetchGoogleEventsForCheckedCalendars().then(renderCalendar);
     }
+  }
+
+  const STATUS_FIELDS_URIKAKE = [
+    { field: '依頼日', label: '依頼' },
+    { field: '見積日', label: '見積' },
+    { field: '納品日', label: '納品' },
+    { field: '請求日', label: '請求' },
+    { field: '入金日', label: '入金' }
+  ];
+  const STATUS_FIELDS_KAIKAKE = [
+    { field: '発注日', label: '発注' },
+    { field: '市場開場日', label: '市場開場' },
+    { field: '入荷日', label: '入荷' },
+    { field: '請求日', label: '請求' },
+    { field: '支払日', label: '支払' }
+  ];
+
+  function groupRecordsByCaseId(items, idField) {
+    const groups = {};
+    const order = [];
+    items.forEach(item => {
+      const id = item[idField] || item.ID || Object.values(item)[0] || '';
+      if (!groups[id]) { groups[id] = []; order.push(id); }
+      groups[id].push(item);
+    });
+    return { groups, order };
+  }
+
+  function getMatchingStatusLabel(rep, dateStr, fieldsList) {
+    const matched = fieldsList.filter(f => normalizeDate(rep[f.field]) === dateStr);
+    if (matched.length === 0) return fieldsList[0].label;
+    return matched.map(m => m.label).join('/');
+  }
+
+  function buildNameDisplay(names, maxLen = 18) {
+    if (names.length === 0) return '';
+    let display = '';
+    for (let i = 0; i < names.length; i++) {
+      const candidate = display ? display + '・' + names[i] : names[i];
+      if (candidate.length > maxLen && display) {
+        return display + '(他)';
+      }
+      display = candidate;
+    }
+    return display;
+  }
+
+  function buildGroupedDayEntry(type, groupId, rows, dateStr) {
+    const isKaikake = type === 'kaikake';
+    const rep = rows[0];
+    const statusFields = isKaikake ? STATUS_FIELDS_KAIKAKE : STATUS_FIELDS_URIKAKE;
+    const statusLabel = getMatchingStatusLabel(rep, dateStr, statusFields);
+    const title = rep.依頼件名 || rep.発注件名 || rep.件名 || '（案件）';
+
+    const staffId = rep.担当ID || '';
+    const staff = (appState.tando || []).find(t => String(t.担当ID) === String(staffId)) || {};
+    const staffName = staff.担当名 || '';
+
+    let partnerName = '未設定', partnerContact = '';
+    if (isKaikake) {
+      const partner = (appState.nakaoroshi || []).find(n => String(n.仲卸ID || n.ID) === String(rep.仲卸ID || rep.顧客ID)) || {};
+      partnerName = partner.仲卸名 || '未設定';
+      partnerContact = partner.担当者 || '';
+    } else {
+      const partner = (appState.kokyaku || []).find(k => String(k.顧客ID || k.ID) === String(rep.顧客ID)) || {};
+      partnerName = partner.顧客名 || '未設定';
+      partnerContact = partner.担当者 || '';
+    }
+
+    const names = rows.map(r => r.品名 || '').filter(Boolean);
+    const nameDisplay = buildNameDisplay(names) || '品名未設定';
+
+    let total = 0;
+    rows.forEach(r => { total += Number(r.販売金額 || r.仕入金額 || 0); });
+
+    const accentColor = isKaikake ? '#dc2626' : '#2563eb';
+    const badgeBg = isKaikake ? '#fee2e2' : '#dbeafe';
+
+    return `
+      <div class="list-item" style="border-left: 4px solid ${accentColor}; align-items:flex-start;" onclick="closeDetailModal(); openEditForm('${groupId}', '${type}')">
+        <div style="flex:1; min-width:0;">
+          <div class="title">
+            <span style="background:${badgeBg}; color:${accentColor}; font-size:0.75rem; padding:2px 6px; border-radius:4px; margin-right:6px; flex-shrink:0;">${statusLabel}</span>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${title} ／ (${staffName || '未設定'})</span>
+          </div>
+          <div class="sub">${partnerName} ／ ${partnerContact || '未設定'}</div>
+          <div class="sub">${nameDisplay} ／ ¥${total.toLocaleString()}</div>
+        </div>
+        <div style="font-size:1.2rem; flex-shrink:0; margin-left:8px;">✏️</div>
+      </div>
+    `;
   }
 
   function onDateClick(dateStr) {
@@ -1193,7 +1391,10 @@
     const urikakeItems = (appState.urikake || []).filter(u => String(u.チェック).toUpperCase() !== 'X' && extractAllDatesFromRecord(u).includes(dateStr));
     const gcalEvents = (appState.googleEventsByDate || {})[dateStr] || [];
 
-    if(kaikakeItems.length === 0 && urikakeItems.length === 0 && gcalEvents.length === 0) {
+    const kaikakeGrouped = groupRecordsByCaseId(kaikakeItems, '買掛ID');
+    const urikakeGrouped = groupRecordsByCaseId(urikakeItems, '売掛ID');
+
+    if (kaikakeGrouped.order.length === 0 && urikakeGrouped.order.length === 0 && gcalEvents.length === 0) {
       list.innerHTML = `<p style="font-size:0.85rem; color:#64748b; padding:20px; text-align:center;">この日の登録データはありません</p>`;
     } else {
       gcalEvents.forEach(ev => {
@@ -1207,40 +1408,13 @@
           </div>
         `;
       });
-      kaikakeItems.forEach(item => {
-        const nakaoroshi = appState.nakaoroshi.find(n => 
-          String(n.仲卸ID || n.ID || Object.values(n)[0]) === String(item.仲卸ID || item.顧客ID)
-        ) || {};
-        const id = item.買掛ID || item.ID || Object.values(item)[0];
-        const title = item.依頼件名 || item.件名 || Object.values(item)[1] || '（案件）';
 
-        list.innerHTML += `
-          <div class="list-item" style="border-left: 4px solid #dc2626;" onclick="closeDetailModal(); openEditForm('${id}', 'kaikake')">
-            <div>
-              <div class="title"><span style="background:#fee2e2; color:#dc2626; font-size:0.75rem; padding:2px 6px; border-radius:4px; margin-right:6px;">買掛</span>${title}</div>
-              <div class="sub">仲卸: ${nakaoroshi.仲卸名 || '未設定'} | 品名: ${item.品名 || '-'} | 金額: ¥${Number(item.仕入金額 || item.販売金額 || 0).toLocaleString()}</div>
-            </div>
-            <div style="font-size:1.2rem;">✏️</div>
-          </div>
-        `;
+      kaikakeGrouped.order.forEach(id => {
+        list.innerHTML += buildGroupedDayEntry('kaikake', id, kaikakeGrouped.groups[id], dateStr);
       });
 
-      urikakeItems.forEach(item => {
-        const kokyaku = appState.kokyaku.find(k => 
-          String(k.顧客ID || k.ID || Object.values(k)[0]) === String(item.顧客ID)
-        ) || {};
-        const id = item.売掛ID || item.ID || Object.values(item)[0];
-        const title = item.依頼件名 || item.件名 || Object.values(item)[1] || '（案件）';
-
-        list.innerHTML += `
-          <div class="list-item" style="border-left: 4px solid #2563eb;" onclick="closeDetailModal(); openEditForm('${id}', 'urikake')">
-            <div>
-              <div class="title"><span style="background:#dbeafe; color:#2563eb; font-size:0.75rem; padding:2px 6px; border-radius:4px; margin-right:6px;">売掛</span>${title}</div>
-              <div class="sub">顧客: ${kokyaku.顧客名 || '未設定'} | 品名: ${item.品名 || '-'} | 金額: ¥${Number(item.販売金額 || 0).toLocaleString()}</div>
-            </div>
-            <div style="font-size:1.2rem;">✏️</div>
-          </div>
-        `;
+      urikakeGrouped.order.forEach(id => {
+        list.innerHTML += buildGroupedDayEntry('urikake', id, urikakeGrouped.groups[id], dateStr);
       });
     }
 
@@ -1563,7 +1737,8 @@
       }
 
       updateStatus("保存完了しました", "saved", false);
-      await fetchAllData();
+      const range = getCurrentViewDateRangeStrings();
+      await ensureTransactionsLoaded(range.start, range.end, true);
       showView("calendar");
     } catch(e) {
       updateStatus("通信エラーで保存できませんでした", "", false);
@@ -1658,7 +1833,7 @@
     document.getElementById("view-master-edit").style.display = viewName === 'masterEdit' ? 'block' : 'none';
     document.getElementById("view-google-event").style.display = viewName === 'googleEvent' ? 'block' : 'none';
 
-    const isContactMaster = appState.currentMasterType === 'kokyaku' || appState.currentMasterType === 'nakaoroshi';
+    const isContactMaster = appState.currentMasterType === 'kokyaku' || appState.currentMasterType === 'nakaoroshi' || appState.currentMasterType === 'tando';
     const isMasterListWithFab = viewName === 'master' && isContactMaster;
 
     document.getElementById("fab-calendar-group").style.display = viewName === 'calendar' ? 'flex' : 'none';
@@ -1753,6 +1928,13 @@
   }
 
   function masterFieldNames(type) {
+    if (type === 'tando') {
+      return {
+        id: '担当ID', name: '担当名', yakushoku: null, tantosha: null,
+        keitai: '担当携帯', tel: null, fax: '担当FAX', mail: '担当メール',
+        hp: null, yubin: null, jusho: null
+      };
+    }
     const prefix = type === 'kokyaku' ? '顧客' : '仲卸';
     return {
       id: prefix + 'ID',
@@ -1769,6 +1951,14 @@
     };
   }
 
+  function masterTypeLabel(type) {
+    return { kokyaku: '顧客', nakaoroshi: '仲卸', tando: '担当者' }[type] || '';
+  }
+
+  function masterDataset(type) {
+    return { kokyaku: appState.kokyaku, nakaoroshi: appState.nakaoroshi, tando: appState.tando }[type] || [];
+  }
+
   function getMapUrl(address) {
     const query = encodeURIComponent(address);
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -1780,23 +1970,19 @@
     const list = document.getElementById("master-list");
     list.innerHTML = "";
 
-    const titleMap = { kokyaku: "顧客台帳", nakaoroshi: "仲卸台帳", tando: "担当者マスタ" };
+    const titleMap = { kokyaku: "顧客台帳", nakaoroshi: "仲卸台帳", tando: "担当者台帳" };
     document.getElementById("master-title").innerText = titleMap[type];
 
-    const isContactType = type === 'kokyaku' || type === 'nakaoroshi';
-    document.getElementById("master-back-btn").style.display = isContactType ? 'none' : 'block';
+    document.getElementById("master-back-btn").style.display = "none";
+    document.getElementById("fab-cache-clear-btn").style.display = type === 'tando' ? "flex" : "none";
 
-    if (isContactType) {
-      renderContactMasterList(type, list);
-    } else {
-      renderSimpleMasterList(type, list);
-    }
+    renderContactMasterList(type, list);
 
     showView('master');
   }
 
   function renderContactMasterList(type, list) {
-    const dataset = type === 'kokyaku' ? appState.kokyaku : appState.nakaoroshi;
+    const dataset = masterDataset(type);
     const f = masterFieldNames(type);
 
     if (!dataset || dataset.length === 0) {
@@ -1807,15 +1993,15 @@
     dataset.forEach(m => {
       const id = m[f.id] || "";
       const name = m[f.name] || "（名称未設定）";
-      const yakushoku = m[f.yakushoku] || "";
-      const tantosha = m[f.tantosha] || "";
+      const yakushoku = f.yakushoku ? (m[f.yakushoku] || "") : "";
+      const tantosha = f.tantosha ? (m[f.tantosha] || "") : "";
       const subLine = [yakushoku, tantosha].filter(Boolean).join(' ／ ');
 
       const keitai = m[f.keitai] || "";
-      const tel = m[f.tel] || "";
+      const tel = f.tel ? (m[f.tel] || "") : "";
       const mail = m[f.mail] || "";
-      const hp = m[f.hp] || "";
-      const jusho = m[f.jusho] || "";
+      const hp = f.hp ? (m[f.hp] || "") : "";
+      const jusho = f.jusho ? (m[f.jusho] || "") : "";
 
       list.innerHTML += `
         <div class="list-item" style="align-items:center;">
@@ -1835,48 +2021,33 @@
     });
   }
 
-  function renderSimpleMasterList(type, list) {
-    const dataMap = { tando: appState.tando };
-    (dataMap[type] || []).forEach(m => {
-      const name = m.担当名 || "（名前なし）";
-      const tel = m.担当携帯 || m.担当TEL || "";
-      const mail = m.担当メール || "";
-
-      list.innerHTML += `
-        <div class="list-item">
-          <div>
-            <div class="title">${name}</div>
-            <div class="sub">TEL: ${tel || 'なし'}</div>
-          </div>
-          <div>
-            ${tel ? `<a href="tel:${tel}" style="text-decoration:none; margin-right:8px;">📞</a>` : ''}
-            ${mail ? `<a href="mailto:${mail}" style="text-decoration:none;">✉</a>` : ''}
-          </div>
-        </div>
-      `;
-    });
-  }
-
-  /* --- 顧客台帳・仲卸台帳 編集ページ --- */
+  /* --- 顧客台帳・仲卸台帳・担当者台帳 編集ページ --- */
   function fillMasterEditForm(rec) {
     const f = masterFieldNames(appState.currentMasterType);
     document.getElementById("me-name").value = rec[f.name] || "";
-    document.getElementById("me-yakushoku").value = rec[f.yakushoku] || "";
-    document.getElementById("me-tantosha").value = rec[f.tantosha] || "";
+    document.getElementById("me-yakushoku").value = f.yakushoku ? (rec[f.yakushoku] || "") : "";
+    document.getElementById("me-tantosha").value = f.tantosha ? (rec[f.tantosha] || "") : "";
     document.getElementById("me-keitai").value = rec[f.keitai] || "";
-    document.getElementById("me-tel").value = rec[f.tel] || "";
+    document.getElementById("me-tel").value = f.tel ? (rec[f.tel] || "") : "";
     document.getElementById("me-fax").value = rec[f.fax] || "";
     document.getElementById("me-mail").value = rec[f.mail] || "";
-    document.getElementById("me-hp").value = rec[f.hp] || "";
-    document.getElementById("me-yubin").value = rec[f.yubin] || "";
-    document.getElementById("me-jusho").value = rec[f.jusho] || "";
+    document.getElementById("me-hp").value = f.hp ? (rec[f.hp] || "") : "";
+    document.getElementById("me-yubin").value = f.yubin ? (rec[f.yubin] || "") : "";
+    document.getElementById("me-jusho").value = f.jusho ? (rec[f.jusho] || "") : "";
+
+    document.getElementById("me-group-yakushoku").style.display = f.yakushoku ? "block" : "none";
+    document.getElementById("me-group-tantosha").style.display = f.tantosha ? "block" : "none";
+    document.getElementById("me-group-tel").style.display = f.tel ? "block" : "none";
+    document.getElementById("me-group-hp").style.display = f.hp ? "block" : "none";
+    document.getElementById("me-group-yubin").style.display = f.yubin ? "block" : "none";
+    document.getElementById("me-group-jusho").style.display = f.jusho ? "block" : "none";
   }
 
   function openMasterNew(type) {
     appState.currentMasterType = type;
     appState.currentMasterEditId = null;
     fillMasterEditForm({});
-    document.getElementById("master-edit-title").innerText = (type === 'kokyaku' ? '顧客' : '仲卸') + " 新規登録";
+    document.getElementById("master-edit-title").innerText = masterTypeLabel(type) + " 新規登録";
     document.getElementById("fab-master-delete-btn").style.display = "none";
     showView('masterEdit');
   }
@@ -1884,12 +2055,12 @@
   function openMasterEdit(type, id) {
     appState.currentMasterType = type;
     appState.currentMasterEditId = id;
-    const dataset = type === 'kokyaku' ? appState.kokyaku : appState.nakaoroshi;
+    const dataset = masterDataset(type);
     const f = masterFieldNames(type);
     const rec = dataset.find(d => String(d[f.id]).trim() === String(id).trim());
     if (!rec) return;
     fillMasterEditForm(rec);
-    document.getElementById("master-edit-title").innerText = (type === 'kokyaku' ? '顧客' : '仲卸') + " 情報編集";
+    document.getElementById("master-edit-title").innerText = masterTypeLabel(type) + " 情報編集";
     document.getElementById("fab-master-delete-btn").style.display = "flex";
     showView('masterEdit');
   }
@@ -1903,15 +2074,15 @@
     const data = {};
     data[f.id] = appState.currentMasterEditId || "";
     data[f.name] = name;
-    data[f.yakushoku] = document.getElementById("me-yakushoku").value;
-    data[f.tantosha] = document.getElementById("me-tantosha").value;
+    if (f.yakushoku) data[f.yakushoku] = document.getElementById("me-yakushoku").value;
+    if (f.tantosha) data[f.tantosha] = document.getElementById("me-tantosha").value;
     data[f.keitai] = document.getElementById("me-keitai").value;
-    data[f.tel] = document.getElementById("me-tel").value;
+    if (f.tel) data[f.tel] = document.getElementById("me-tel").value;
     data[f.fax] = document.getElementById("me-fax").value;
     data[f.mail] = document.getElementById("me-mail").value;
-    data[f.hp] = document.getElementById("me-hp").value;
-    data[f.yubin] = document.getElementById("me-yubin").value;
-    data[f.jusho] = document.getElementById("me-jusho").value;
+    if (f.hp) data[f.hp] = document.getElementById("me-hp").value;
+    if (f.yubin) data[f.yubin] = document.getElementById("me-yubin").value;
+    if (f.jusho) data[f.jusho] = document.getElementById("me-jusho").value;
 
     updateStatus("保存中...", "saving", true);
     try {
@@ -1923,7 +2094,7 @@
       const savedId = (json.data && json.data[f.id]) || appState.currentMasterEditId;
 
       updateStatus("保存完了しました", "saved", false);
-      await fetchAllData();
+      await fetchMasterData();
 
       if (appState.masterReturnContext) {
         const ctx = appState.masterReturnContext;
@@ -1961,7 +2132,7 @@
         body: JSON.stringify({ action: "deleteMaster", type: type, id: id })
       });
       updateStatus("削除しました", "saved", false);
-      await fetchAllData();
+      await fetchMasterData();
       showMasterView(type);
     } catch(e) {
       updateStatus("通信エラーで削除できませんでした", "", false);
