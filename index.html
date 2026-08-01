@@ -182,7 +182,7 @@
     .badge-h { background: #fee2e2; color: #b91c1c; border: 1.5px solid #ef4444; } /* 発 */
     .badge-u { background: #fef3c7; color: #b45309; border: 1.5px solid #f59e0b; } /* 入 */
 
-    /* 2週間表示 */
+    /* 2週表示 */
     .calendar-grid-2week {
       display: grid; grid-template-columns: 32px 1fr 1fr; grid-template-rows: repeat(7, 1fr);
       gap: 2px; background: var(--border); border: 1px solid var(--border); border-radius: 6px; height: 100%; overflow: hidden;
@@ -194,6 +194,10 @@
     .cal-2week-day.sun-bg, .cal-2week-day.holiday-bg { background-color: var(--bg-sun); }
     .cal-2week-day.sat-bg { background-color: var(--bg-sat); }
     .cal-2week-day.today { border: 2px solid var(--primary-light); }
+    .cal-2week-day .day-num { font-size: 0.8rem; font-weight: bold; color: #1e293b; line-height: 1.2; flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cal-2week-day.sun-bg .day-num, .cal-2week-day.holiday-bg .day-num { color: var(--text-sun); }
+    .cal-2week-day.sat-bg .day-num { color: var(--text-sat); }
+    .cal-2week-day .rokuyou { font-size: 0.6rem; color: #64748b; white-space: nowrap; flex-shrink: 0; margin-left: 4px; }
     .cal-grid-horizontal { display: flex; gap: 4px; width: 100%; flex: 1; min-height: 0; align-items: center; overflow: hidden; }
 
     #view-urikake-form, #view-master { height: 100%; overflow-y: auto; padding-bottom: 80px; }
@@ -544,7 +548,7 @@
   </div>
 
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbxhde_85UIhRz4sabctBDeWOBST7Bm2-9Blv2GFJDxpnKXuo91Ns8OMe1XydxXii16q/exec";
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbyB1S5VpzmgNfGtMAtRK3cONmX_oQoxYs9gllBkTpqKKKc66552SjxP1C8VtYxal0AK/exec";
 
   const GOOGLE_CLIENT_ID = "154863690218-sm6g80n7kppslgt72qpu5939er0g7pfc.apps.googleusercontent.com";
   const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
@@ -598,10 +602,12 @@
 
   window.onload = async () => {
     initSwipeEvents();
-    updateStatus("データ同期中...", "saving", true);
+    updateStatus("データ同期中 (0%)", "saving", true);
     try {
       await fetchMasterData();
-      await loadInitialTransactionWindow();
+      updateStatus("データ同期中 (50%)", "saving", true);
+      await fetchAllTransactions();
+      updateStatus("データ同期中 (100%)", "saving", true);
       const uCount = (appState.urikake || []).length;
       const kCount = (appState.kaikake || []).length;
       updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved", false);
@@ -689,11 +695,7 @@
     }
   }
 
-  function formatDateForRange(d) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }
-
-  /* 2週間表示の基準範囲（前週：左, 今週：右）を返す */
+  /* 2週表示の基準範囲（前週：左, 今週：右）を返す */
   function get2WeekWindowBounds(refDate) {
     const dayShift = (refDate.getDay() + 6) % 7;
     const startMon = new Date(refDate);
@@ -701,20 +703,6 @@
     const endSun = new Date(startMon);
     endSun.setDate(startMon.getDate() + 13);
     return { startMon, endSun };
-  }
-
-  function getCurrentViewDateRangeStrings() {
-    if (appState.calViewMode === 'month') {
-      const year = appState.currentDate.getFullYear();
-      const month = appState.currentDate.getMonth();
-      const start = new Date(year, month, 1);
-      start.setDate(start.getDate() - 7);
-      const end = new Date(year, month + 1, 0);
-      end.setDate(end.getDate() + 7);
-      return { start: formatDateForRange(start), end: formatDateForRange(end) };
-    }
-    const { startMon, endSun } = get2WeekWindowBounds(appState.currentDate);
-    return { start: formatDateForRange(startMon), end: formatDateForRange(endSun) };
   }
 
   /* --- マスタデータ（顧客・仲卸・担当・青果・水産）の取得 --- */
@@ -740,71 +728,23 @@
     }
   }
 
-  const URIKAKE_DATE_COLS = ['依頼日','見積日','納品日','請求日','入金日','キャンセル日'];
-  const KAIKAKE_DATE_COLS = ['発注日','市場開場日','入荷日','請求日','支払日','キャンセル日'];
-
-  function rowInDateRange(row, cols, startStr, endStr) {
-    return cols.some(c => {
-      const v = normalizeDate(row[c]);
-      return v && v >= startStr && v <= endStr;
-    });
-  }
-
-  function replaceTransactionsInRange(startStr, endStr, newUrikake, newKaikake) {
-    appState.urikake = (appState.urikake || []).filter(r => !rowInDateRange(r, URIKAKE_DATE_COLS, startStr, endStr));
-    appState.kaikake = (appState.kaikake || []).filter(r => !rowInDateRange(r, KAIKAKE_DATE_COLS, startStr, endStr));
-    appState.urikake.push(...newUrikake);
-    appState.kaikake.push(...newKaikake);
-  }
-
-  async function fetchTransactionRange(startStr, endStr) {
-    const res = await fetch(GAS_URL, {
-      method: "POST",
-      body: JSON.stringify({ action: "getTransactionsByRange", startDate: startStr, endDate: endStr })
-    });
-    const json = await res.json();
-    if (json.status === "success" && json.data) {
-      replaceTransactionsInRange(startStr, endStr, json.data.urikake || [], json.data.kaikake || []);
-    } else {
-      updateStatus("⚠️ 売掛買掛データの取得に失敗しました（GASの再デプロイが必要な可能性があります）", "", false);
-    }
-  }
-
-  /**
-   * 指定範囲の売掛・買掛データが未読込みの場合のみサーバーへ取得しに行く。
-   * forceRefresh=true の場合はキャッシュ済みでも強制的に再取得する（保存直後の反映用）。
-   */
-  async function ensureTransactionsLoaded(startStr, endStr, forceRefresh = false) {
-    if (!forceRefresh && appState.loadedStart && appState.loadedEnd &&
-        startStr >= appState.loadedStart && endStr <= appState.loadedEnd) {
-      return;
-    }
-
-    let fetchStart = startStr;
-    let fetchEnd = endStr;
-
-    if (!forceRefresh && appState.loadedStart && appState.loadedEnd) {
-      const overlapsOrAdjacent = !(endStr < appState.loadedStart || startStr > appState.loadedEnd);
-      if (overlapsOrAdjacent) {
-        fetchStart = startStr < appState.loadedStart ? startStr : appState.loadedStart;
-        fetchEnd = endStr > appState.loadedEnd ? endStr : appState.loadedEnd;
+  /* --- 売掛・買掛データを全件取得 --- */
+  async function fetchAllTransactions() {
+    try {
+      const res = await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "getAllTransactions" })
+      });
+      const json = await res.json();
+      if (json.status === "success" && json.data) {
+        appState.urikake = json.data.urikake || [];
+        appState.kaikake = json.data.kaikake || [];
+      } else {
+        updateStatus("⚠️ 売掛買掛データの取得に失敗しました（GASの再デプロイが必要な可能性があります）", "", false);
       }
+    } catch(e) {
+      updateStatus("売掛買掛データの取得に失敗しました", "", false);
     }
-
-    await fetchTransactionRange(fetchStart, fetchEnd);
-
-    if (!appState.loadedStart || fetchStart < appState.loadedStart) appState.loadedStart = fetchStart;
-    if (!appState.loadedEnd || fetchEnd > appState.loadedEnd) appState.loadedEnd = fetchEnd;
-  }
-
-  /* 起動時：前ページ・現在ページ（前週＋今週）・次ページの3ページ分のみ読込む */
-  async function loadInitialTransactionWindow() {
-    const range = getCurrentViewDateRangeStrings();
-    const startDate = new Date(range.start);
-    startDate.setDate(startDate.getDate() - 14);
-    const endDate = new Date(range.end);
-    endDate.setDate(endDate.getDate() + 14);
-    await ensureTransactionsLoaded(formatDateForRange(startDate), formatDateForRange(endDate));
   }
 
   /* --- Googleカレンダー連携 (Google Identity Services によるOAuth) --- */
@@ -1223,12 +1163,15 @@
     const day = String(d.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
     const holidayName = getHolidayName(year, d.getMonth() + 1, d.getDate());
+    const rokuyou = getRokuyou(year, d.getMonth() + 1, d.getDate());
 
     let bgClass = "";
     if (dayIdx === 6 || holidayName) bgClass = "sun-bg";
     else if (dayIdx === 5) bgClass = "sat-bg";
 
-    const displayLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+    const displayLabel = holidayName
+      ? `${d.getMonth() + 1}/${d.getDate()} ${holidayName}`
+      : `${d.getMonth() + 1}/${d.getDate()}`;
     const isToday = dateStr === getTodayString();
     const badges = getStatusBadgesForDate(dateStr);
     const gcalTitle = getGCalTitleForDate(dateStr);
@@ -1237,7 +1180,10 @@
     cell.className = `cal-2week-day ${bgClass} ${isToday ? 'today' : ''}`;
     cell.onclick = () => onDateClick(dateStr);
     cell.innerHTML = `
-      <div class="day-num">${displayLabel}</div>
+      <div class="day-header-line">
+        <span class="day-num">${displayLabel}</span>
+        <span class="rokuyou">${rokuyou}</span>
+      </div>
       ${gcalTitle ? `<div class="gcal-event-title">${gcalTitle}</div>` : ''}
       <div class="cal-grid-horizontal">${badges.slice(0, 4).join('')}</div>
     `;
@@ -1261,33 +1207,21 @@
     return [...new Set(badges)];
   }
 
-  async function moveCalendar(delta) {
+  function moveCalendar(delta) {
     if (appState.calViewMode === 'month') {
       appState.currentDate.setMonth(appState.currentDate.getMonth() + delta);
     } else {
       appState.currentDate.setDate(appState.currentDate.getDate() + (delta * 14));
     }
-    updateStatus("読込み中...", "saving", true);
-    const range = getCurrentViewDateRangeStrings();
-    await ensureTransactionsLoaded(range.start, range.end);
-    const uCount = (appState.urikake || []).length;
-    const kCount = (appState.kaikake || []).length;
-    updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved", false);
     renderCalendar();
     if (appState.googleAuthed) {
       fetchGoogleEventsForCheckedCalendars().then(renderCalendar);
     }
   }
 
-  async function toggleCalendarView() {
+  function toggleCalendarView() {
     appState.calViewMode = appState.calViewMode === 'month' ? '2week' : 'month';
-    document.getElementById("cal-toggle-btn").innerText = appState.calViewMode === 'month' ? '2週間表示' : '月表示';
-    updateStatus("読込み中...", "saving", true);
-    const range = getCurrentViewDateRangeStrings();
-    await ensureTransactionsLoaded(range.start, range.end);
-    const uCount = (appState.urikake || []).length;
-    const kCount = (appState.kaikake || []).length;
-    updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved", false);
+    document.getElementById("cal-toggle-btn").innerText = appState.calViewMode === 'month' ? '2週表示' : '月表示';
     renderCalendar();
     if (appState.googleAuthed) {
       fetchGoogleEventsForCheckedCalendars().then(renderCalendar);
@@ -1741,8 +1675,7 @@
       }
 
       updateStatus("保存完了しました", "saved", false);
-      const range = getCurrentViewDateRangeStrings();
-      await ensureTransactionsLoaded(range.start, range.end, true);
+      await fetchAllTransactions();
       showView("calendar");
     } catch(e) {
       updateStatus("通信エラーで保存できませんでした", "", false);
