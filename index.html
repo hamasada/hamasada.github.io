@@ -194,7 +194,7 @@
     .cal-2week-day.sun-bg, .cal-2week-day.holiday-bg { background-color: var(--bg-sun); }
     .cal-2week-day.sat-bg { background-color: var(--bg-sat); }
     .cal-2week-day.today { border: 2px solid var(--primary-light); }
-    .cal-grid-horizontal { display: flex; gap: 4px; width: 100%; height: 100%; align-items: center; overflow: hidden; }
+    .cal-grid-horizontal { display: flex; gap: 4px; width: 100%; flex: 1; min-height: 0; align-items: center; overflow: hidden; }
 
     #view-urikake-form, #view-master { height: 100%; overflow-y: auto; padding-bottom: 80px; }
     .view-card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; }
@@ -242,12 +242,13 @@
       display: flex; align-items: center; justify-content: center; font-size: 1.8rem;
       box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; border: none;
     }
-    .fab-google { background: white; color: #4285F4; border: 2px solid #4285F4; font-size: 1.3rem; font-weight: bold; font-family: Georgia, serif; }
+    .fab-google { font-size: 1.6rem; }
 
     /* Googleカレンダー予定タイトル (カレンダーマス先頭行) */
     .gcal-event-title {
-      font-size: 0.6rem; color: #1a73e8; background: #e8f0fe; border-radius: 2px; padding: 0 2px;
-      white-space: nowrap; overflow: hidden; line-height: 1.3; margin-top: 1px; width: 100%;
+      font-size: 0.6rem; color: #1a73e8; background: #e8f0fe; border-radius: 2px; padding: 1px 2px;
+      white-space: nowrap; overflow: hidden; line-height: 1.6; height: 1.6em; box-sizing: content-box;
+      margin-top: 1px; width: 100%; flex-shrink: 0;
     }
   </style>
 </head>
@@ -255,7 +256,7 @@
 
   <header>
     <h1>濱貞アプリ</h1>
-    <div class="header-btns">
+    <div class="header-btns" id="header-controls">
       <button class="btn-sm" onclick="toggleCalendarView()" id="cal-toggle-btn">2週間表示</button>
       <button class="menu-btn" onclick="toggleMenu()">☰</button>
     </div>
@@ -316,6 +317,17 @@
     </div>
   </div>
 
+  <!-- 物理削除 確認モーダル -->
+  <div class="modal-overlay" id="delete-confirm-modal" style="display: none;">
+    <div class="modal-card" style="text-align:center;">
+      <h3 style="color:#dc2626; margin-bottom:20px;">削除して宜しいですか？</h3>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-sm" style="background:#94a3b8; flex:1; padding:12px; font-size:0.95rem;" onclick="closeDeleteConfirmModal()">いいえ</button>
+        <button class="btn-sm" style="background:#dc2626; flex:1; padding:12px; font-size:0.95rem; font-weight:bold;" onclick="executeDeleteConfirmed()">はい</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Googleカレンダー選択モーダル -->
   <div class="modal-overlay" id="google-cal-list-modal" style="display: none;" onclick="closeGoogleCalListModal(event)">
     <div class="modal-card" onclick="event.stopPropagation()">
@@ -333,11 +345,11 @@
     <h3>メニュー</h3>
     <ul>
       <li onclick="showView('calendar')">📅 カレンダー/TOP</li>
-      <li onclick="syncGoogleCalendar()">📅 Googleカレンダーと連携</li>
+      <li id="gcal-menu-item" onclick="handleGoogleCalendarMenuClick()">📅 Googleカレンダー連携</li>
       <li onclick="openNewRecord('urikake')">📈 新規売掛（販売）登録</li>
       <li onclick="openNewRecord('kaikake')">📉 新規買掛（仕入）登録</li>
-      <li onclick="showMasterView('kokyaku')">👥 顧客マスタ一覧</li>
-      <li onclick="showMasterView('nakaoroshi')">🏢 仲卸マスタ一覧</li>
+      <li onclick="showMasterView('kokyaku')">👥 顧客台帳</li>
+      <li onclick="showMasterView('nakaoroshi')">🏢 仲卸台帳</li>
       <li onclick="showMasterView('tando')">👨‍💼 担当者マスタ一覧</li>
       <li onclick="resetStaffCache()" style="color:#dc2626; margin-top:20px;">🔄 担当者再選択（キャッシュ消去）</li>
     </ul>
@@ -368,7 +380,7 @@
         <div class="form-group">
           <label id="partner-label">顧客・担当</label>
           <div style="display: flex; gap: 8px;">
-            <select class="form-control" id="u-顧客ID"><option value="">選択...</option></select>
+            <select class="form-control" id="u-顧客ID" onchange="onPartnerSelectChanged()"><option value="">選択...</option></select>
             <select class="form-control" id="u-担当ID" onchange="onStaffChangedInForm()"><option value="">担当選択</option></select>
           </div>
         </div>
@@ -385,11 +397,14 @@
 
         <div class="form-group">
           <label style="color:var(--primary); font-size:0.95rem;">品名・産地・価格情報</label>
-          <p style="font-size:0.75rem; color:#64748b; margin-bottom:8px;">※長押しでその明細を削除できます</p>
+          <p style="font-size:0.75rem; color:#64748b; margin-bottom:8px;">※各明細の「取消し」ボタンでその明細を取消しできます</p>
           
           <div id="items-container"></div>
 
-          <button type="button" class="btn-add-item" onclick="addItemRow()">＋ 明細項目を追加</button>
+          <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <button type="button" class="btn-add-item" style="flex:2; margin-bottom:0;" onclick="addItemRow()">＋ 明細項目を追加</button>
+            <button type="button" class="btn-add-item" style="flex:1; margin-bottom:0; background:#fef2f2; color:#dc2626; border-color:#dc2626;" onclick="addDiscountRow()">＋ 値引き</button>
+          </div>
 
           <div style="background:#e2e8f0; padding:10px 14px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:1rem; margin-top:8px;">
             <span>合計金額:</span>
@@ -403,7 +418,53 @@
       <div class="view-card">
         <h3 id="master-title">マスタ一覧</h3>
         <div id="master-list" style="margin-top: 12px;"></div>
-        <button class="btn-sm" style="background:#64748b; width:100%; padding:12px; margin-top:12px;" onclick="showView('calendar')">戻る</button>
+        <button id="master-back-btn" class="btn-sm" style="background:#64748b; width:100%; padding:12px; margin-top:12px;" onclick="showView('calendar')">戻る</button>
+      </div>
+    </div>
+
+    <div id="view-master-edit" style="display: none; height:100%; overflow-y:auto; padding-bottom:80px;">
+      <div class="view-card">
+        <h3 id="master-edit-title">情報編集</h3>
+        <div class="form-group">
+          <label>名称 <span style="color:#dc2626;">*</span></label>
+          <input type="text" class="form-control" id="me-name" placeholder="例: 〇〇商店">
+        </div>
+        <div class="form-group">
+          <label>役職</label>
+          <input type="text" class="form-control" id="me-yakushoku" placeholder="例: 店長">
+        </div>
+        <div class="form-group">
+          <label>担当者</label>
+          <input type="text" class="form-control" id="me-tantosha" placeholder="例: 山田 太郎">
+        </div>
+        <div class="form-group">
+          <label>携帯番号</label>
+          <input type="tel" class="form-control" id="me-keitai" placeholder="090-0000-0000">
+        </div>
+        <div class="form-group">
+          <label>TEL</label>
+          <input type="tel" class="form-control" id="me-tel" placeholder="03-0000-0000">
+        </div>
+        <div class="form-group">
+          <label>FAX</label>
+          <input type="tel" class="form-control" id="me-fax" placeholder="03-0000-0000">
+        </div>
+        <div class="form-group">
+          <label>メールアドレス</label>
+          <input type="email" class="form-control" id="me-mail" placeholder="example@mail.com">
+        </div>
+        <div class="form-group">
+          <label>ホームページURL</label>
+          <input type="text" class="form-control" id="me-hp" placeholder="https://">
+        </div>
+        <div class="form-group">
+          <label>郵便番号</label>
+          <input type="text" class="form-control" id="me-yubin" placeholder="000-0000">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>住所</label>
+          <textarea class="form-control" id="me-jusho" rows="2" placeholder="住所を入力（🗺マップ表示に使用）"></textarea>
+        </div>
       </div>
     </div>
 
@@ -458,11 +519,11 @@
   </div>
 
   <div id="fab-google-btn-group" class="fab-container-left" style="display: none;">
-    <button class="fab fab-google" onclick="openGoogleCalListModal()">G</button>
+    <button class="fab fab-google" onclick="openGoogleCalListModal()">📅</button>
   </div>
 
-  <div id="fab-form-back" class="fab-container-left" style="display: none;">
-    <button class="fab" style="background:#64748b;" onclick="showView('calendar')">←</button>
+  <div id="fab-back-left" class="fab-container-left" style="display: none;">
+    <button class="fab" style="background:#64748b;" onclick="handleBackFab()">←</button>
   </div>
 
   <div id="fab-form-group" class="fab-container" style="display: none;">
@@ -470,8 +531,13 @@
     <button class="fab" style="background:#16a34a;" onclick="saveFormData()">💾</button>
   </div>
 
-  <div id="fab-gcal-detail-back" class="fab-container-left" style="display: none;">
-    <button class="fab" style="background:#64748b;" onclick="closeGoogleEventDetail()">←</button>
+  <div id="fab-master-list-group" class="fab-container" style="display: none;">
+    <button class="fab" onclick="openMasterNew(appState.currentMasterType)">＋</button>
+  </div>
+
+  <div id="fab-master-group" class="fab-container" style="display: none;">
+    <button class="fab" id="fab-master-delete-btn" style="background:#dc2626; display:none;" onclick="openDeleteConfirmModal()">🗑️</button>
+    <button class="fab" style="background:#16a34a;" onclick="saveMasterEdit()">💾</button>
   </div>
 
 <script>
@@ -491,6 +557,10 @@
     currentNumTargetField: null,
     selectedStaffId: localStorage.getItem("hamasada_staff_id") || "",
     selectedDetailDate: getTodayString(),
+    currentView: 'calendar',
+    currentMasterType: 'kokyaku',
+    currentMasterEditId: null,
+    masterReturnContext: null,
     googleAuthed: false,
     googleAccessToken: null,
     googleTokenExpiry: 0,
@@ -651,6 +721,32 @@
     return googleTokenClient;
   }
 
+  function handleGoogleCalendarMenuClick() {
+    if (appState.googleAuthed) {
+      disconnectGoogleCalendar();
+    } else {
+      syncGoogleCalendar();
+    }
+  }
+
+  function disconnectGoogleCalendar() {
+    toggleMenu(false);
+    if (appState.googleAccessToken && typeof google !== "undefined" && google.accounts && google.accounts.oauth2) {
+      try { google.accounts.oauth2.revoke(appState.googleAccessToken, () => {}); } catch(e) {}
+    }
+    appState.googleAuthed = false;
+    appState.googleAccessToken = null;
+    appState.googleTokenExpiry = 0;
+    appState.googleCalendars = [];
+    appState.googleEventsByDate = {};
+    localStorage.removeItem("hamasada_google_token");
+    localStorage.removeItem("hamasada_google_token_expiry");
+    document.getElementById("fab-google-btn-group").style.display = "none";
+    document.getElementById("gcal-menu-item").innerText = "📅 Googleカレンダー連携";
+    updateStatus("Googleカレンダー連携を解除しました", "saved", false);
+    renderCalendar();
+  }
+
   function syncGoogleCalendar() {
     toggleMenu(false);
     const client = initGoogleTokenClient();
@@ -662,6 +758,7 @@
   async function onGoogleAuthSuccess() {
     document.getElementById("fab-google-btn-group").style.display =
       document.getElementById("view-calendar").style.display !== "none" ? "flex" : "none";
+    document.getElementById("gcal-menu-item").innerText = "📅 Googleカレンダー解除";
     updateStatus("Googleカレンダー認証が完了しました", "saved", false);
     await fetchGoogleCalendarList();
     await fetchGoogleEventsForCheckedCalendars();
@@ -677,6 +774,7 @@
       appState.googleTokenExpiry = expiry;
       appState.googleAuthed = true;
       document.getElementById("fab-google-btn-group").style.display = "flex";
+      document.getElementById("gcal-menu-item").innerText = "📅 Googleカレンダー解除";
       await fetchGoogleCalendarList();
       await fetchGoogleEventsForCheckedCalendars();
     }
@@ -704,6 +802,7 @@
           appState.googleAccessToken = null;
           localStorage.removeItem("hamasada_google_token");
           document.getElementById("fab-google-btn-group").style.display = "none";
+          document.getElementById("gcal-menu-item").innerText = "📅 Googleカレンダー連携";
         }
       }
     } catch(e) {
@@ -1179,6 +1278,7 @@
         const name = n.仲卸名 || n.名前 || n.社名 || Object.values(n)[1] || "名称未設定";
         partnerSelect.innerHTML += `<option value="${id}">${name}</option>`;
       });
+      partnerSelect.innerHTML += `<option value="__new__">＋ 新規登録</option>`;
 
       renderDateTabs([
         { name: '発注', icon: '発' },
@@ -1194,6 +1294,7 @@
         const name = k.顧客名 || k.名前 || k.社名 || Object.values(k)[1] || "名称未設定";
         partnerSelect.innerHTML += `<option value="${id}">${name}</option>`;
       });
+      partnerSelect.innerHTML += `<option value="__new__">＋ 新規登録</option>`;
 
       renderDateTabs([
         { name: '依頼', icon: '依' },
@@ -1250,9 +1351,23 @@
   }
 
   function addItemRow(initialData = null) {
-    const item = initialData || { id: "", category: "青果", name: "", sanchi: "", price: "", amount: "", check: "" };
+    const item = initialData || { id: "", category: "青果", name: "", sanchi: "", price: "", amount: "", check: "", isDiscount: false };
     currentItems.push(item);
     renderItemRows();
+  }
+
+  function addDiscountRow() {
+    const item = { id: "", category: "値引き", name: "値引き", sanchi: "", price: "", amount: "", check: "", isDiscount: true };
+    currentItems.push(item);
+    renderItemRows();
+  }
+
+  function confirmDeleteItemRow(index) {
+    const item = currentItems[index];
+    const label = item.isDiscount ? '値引き' : (item.name || '未設定');
+    if (confirm(`明細 #${index + 1}（${label}）を取消しますか？`)) {
+      deleteItemRow(index);
+    }
   }
 
   function renderItemRows() {
@@ -1264,27 +1379,30 @@
 
       const card = document.createElement("div");
       card.className = "item-card";
-      
-      let pressTimer;
-      const startPress = () => {
-        pressTimer = setTimeout(() => {
-          if (confirm(`明細 #${index + 1}（${item.name || '未設定'}）を削除しますか？`)) {
-            deleteItemRow(index);
-          }
-        }, 700);
-      };
-      const cancelPress = () => clearTimeout(pressTimer);
 
-      card.addEventListener("touchstart", startPress, { passive: true });
-      card.addEventListener("touchend", cancelPress, { passive: true });
-      card.addEventListener("mousedown", startPress);
-      card.addEventListener("mouseup", cancelPress);
-      card.addEventListener("mouseleave", cancelPress);
+      if (item.isDiscount) {
+        const amtNum = Number(item.amount) || 0;
+        const displayAmount = item.amount !== "" && item.amount !== null && !isNaN(amtNum) && amtNum !== 0 ? `▲${amtNum.toLocaleString()}` : "";
+        card.style.background = "#fef2f2";
+        card.style.border = "1px solid #fecaca";
+        card.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-weight:bold; font-size:0.85rem; color:#dc2626;">明細 #${index + 1}（値引き）</span>
+            <button type="button" class="btn-sm" style="background:#dc2626; padding:4px 10px; font-size:0.75rem;" onclick="confirmDeleteItemRow(${index})">取消し</button>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" class="form-control" placeholder="値引き" value="${item.name}" oninput="currentItems[${index}].name=this.value" style="flex:2;">
+            <input type="text" class="form-control" placeholder="金額" value="${displayAmount}" readonly onclick="openNumpad(${index}, 'amount')" style="flex:1; color:#dc2626; font-weight:bold; text-align:right;">
+          </div>
+        `;
+        container.appendChild(card);
+        return;
+      }
 
       card.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
           <span style="font-weight:bold; font-size:0.85rem; color:var(--primary);">明細 #${index + 1}</span>
-          <span style="font-size:0.75rem; color:#dc2626;">(長押しで削除)</span>
+          <button type="button" class="btn-sm" style="background:#dc2626; padding:4px 10px; font-size:0.75rem;" onclick="confirmDeleteItemRow(${index})">取消し</button>
         </div>
         <div class="chip-group" style="margin-bottom: 8px;">
           <div class="chip ${item.category === '青果' ? 'active' : ''}" onclick="selectItemCategory(${index}, '青果')">青果</div>
@@ -1294,8 +1412,10 @@
           <option value="">マスタ選択...</option>
         </select>
         <div class="chip-group" id="sanchi-chips-${index}" style="margin-bottom:6px;"></div>
-        <input type="text" class="form-control" placeholder="品名" value="${item.name}" oninput="currentItems[${index}].name=this.value" style="margin-bottom:4px;">
-        <input type="text" class="form-control" placeholder="産地" value="${item.sanchi}" oninput="currentItems[${index}].sanchi=this.value" style="margin-bottom:8px;">
+        <div style="display: flex; gap: 8px; margin-bottom:8px;">
+          <input type="text" class="form-control" placeholder="品名" value="${item.name}" oninput="currentItems[${index}].name=this.value">
+          <input type="text" class="form-control" placeholder="産地" value="${item.sanchi}" oninput="currentItems[${index}].sanchi=this.value">
+        </div>
         <div style="display: flex; gap: 8px;">
           <input type="number" class="form-control" placeholder="単価" value="${item.price}" readonly onclick="openNumpad(${index}, 'price')">
           <input type="number" class="form-control" placeholder="金額" value="${item.amount}" readonly onclick="openNumpad(${index}, 'amount')">
@@ -1359,7 +1479,8 @@
     let total = 0;
     currentItems.forEach(item => {
       if (item.check !== 'X') {
-        total += Number(item.amount) || 0;
+        const amt = Number(item.amount) || 0;
+        total += item.isDiscount ? -amt : amt;
       }
     });
     document.getElementById("total-amount-display").innerText = `¥${total.toLocaleString()}`;
@@ -1381,6 +1502,8 @@
 
     try {
       for (let item of currentItems) {
+        const rawAmount = Number(item.amount) || 0;
+        const signedAmount = item.isDiscount ? -Math.abs(rawAmount) : rawAmount;
         const formData = {
           "売掛ID": isKaikake ? "" : item.id,
           "買掛ID": isKaikake ? item.id : "",
@@ -1391,9 +1514,9 @@
           "担当ID": document.getElementById("u-担当ID").value,
           "品名": item.name,
           "産地": item.sanchi,
-          "単価": item.price,
-          "販売金額": item.amount,
-          "仕入金額": item.amount,
+          "単価": item.isDiscount ? "" : item.price,
+          "販売金額": signedAmount,
+          "仕入金額": signedAmount,
           "チェック": item.check || "",
           "依頼日": currentFormData["依頼日"] || "",
           "発注日": currentFormData["発注日"] || currentFormData["依頼日"] || "",
@@ -1504,21 +1627,42 @@
   }
 
   function showView(viewName) {
+    appState.currentView = viewName;
+
     document.getElementById("view-calendar").style.display = viewName === 'calendar' ? 'flex' : 'none';
     document.getElementById("view-urikake-form").style.display = viewName === 'urikake' ? 'block' : 'none';
     document.getElementById("view-master").style.display = viewName === 'master' ? 'block' : 'none';
+    document.getElementById("view-master-edit").style.display = viewName === 'masterEdit' ? 'block' : 'none';
     document.getElementById("view-google-event").style.display = viewName === 'googleEvent' ? 'block' : 'none';
+
+    const isContactMaster = appState.currentMasterType === 'kokyaku' || appState.currentMasterType === 'nakaoroshi';
+    const isMasterListWithFab = viewName === 'master' && isContactMaster;
 
     document.getElementById("fab-calendar-group").style.display = viewName === 'calendar' ? 'flex' : 'none';
     document.getElementById("fab-form-group").style.display = viewName === 'urikake' ? 'flex' : 'none';
-    document.getElementById("fab-form-back").style.display = viewName === 'urikake' ? 'flex' : 'none';
-    document.getElementById("fab-gcal-detail-back").style.display = viewName === 'googleEvent' ? 'flex' : 'none';
+    document.getElementById("fab-master-list-group").style.display = isMasterListWithFab ? 'flex' : 'none';
+    document.getElementById("fab-master-group").style.display = viewName === 'masterEdit' ? 'flex' : 'none';
     document.getElementById("fab-google-btn-group").style.display = (viewName === 'calendar' && appState.googleAuthed) ? 'flex' : 'none';
+
+    const showBackLeft = viewName === 'urikake' || viewName === 'googleEvent' || viewName === 'masterEdit' || isMasterListWithFab;
+    document.getElementById("fab-back-left").style.display = showBackLeft ? 'flex' : 'none';
+
+    // ヘッダーの月/2週間切替とハンバーガーメニューはカレンダー画面のみ表示
+    document.getElementById("header-controls").style.display = viewName === 'calendar' ? 'flex' : 'none';
 
     if (viewName === 'calendar') {
       renderCalendar();
     }
     toggleMenu(false);
+  }
+
+  function handleBackFab() {
+    const v = appState.currentView;
+    if (v === 'masterEdit') {
+      showMasterView(appState.currentMasterType);
+    } else {
+      showView('calendar');
+    }
   }
 
   function openNewRecord(type = 'urikake', targetDate = null) {
@@ -1559,15 +1703,21 @@
       String(d[idKey] || d.ID) === String(id)
     );
 
-    currentItems = relatedItems.map(item => ({
-      id: item[idKey] || item.ID || "",
-      category: "青果",
-      name: item.品名 || "",
-      sanchi: item.産地 || "",
-      price: item.単価 || "",
-      amount: item.販売金額 || item.仕入金額 || "",
-      check: item.チェック || ""
-    }));
+    currentItems = relatedItems.map(item => {
+      const rawAmt = item.販売金額 || item.仕入金額 || "";
+      const numAmt = Number(rawAmt);
+      const isDiscount = rawAmt !== "" && !isNaN(numAmt) && numAmt < 0;
+      return {
+        id: item[idKey] || item.ID || "",
+        category: isDiscount ? "値引き" : "青果",
+        name: item.品名 || "",
+        sanchi: item.産地 || "",
+        price: item.単価 || "",
+        amount: isDiscount ? Math.abs(numAmt) : rawAmt,
+        check: item.チェック || "",
+        isDiscount: isDiscount
+      };
+    });
 
     if (currentItems.length === 0) addItemRow();
 
@@ -1578,20 +1728,95 @@
     showView('urikake');
   }
 
+  function masterFieldNames(type) {
+    const prefix = type === 'kokyaku' ? '顧客' : '仲卸';
+    return {
+      id: prefix + 'ID',
+      name: prefix + '名',
+      yakushoku: '役職',
+      tantosha: '担当者',
+      keitai: prefix + '携帯',
+      tel: prefix + 'TEL',
+      fax: prefix + 'FAX',
+      mail: prefix + 'メール',
+      hp: prefix + 'HP',
+      yubin: prefix + '〒',
+      jusho: prefix + '住所'
+    };
+  }
+
+  function getMapUrl(address) {
+    const query = encodeURIComponent(address);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    return isIOS ? `https://maps.apple.com/?q=${query}` : `https://www.google.com/maps/search/?api=1&query=${query}`;
+  }
+
   function showMasterView(type) {
-    showView('master');
+    appState.currentMasterType = type;
     const list = document.getElementById("master-list");
     list.innerHTML = "";
 
-    const dataMap = { kokyaku: appState.kokyaku, nakaoroshi: appState.nakaoroshi, tando: appState.tando };
-    const titleMap = { kokyaku: "顧客マスタ", nakaoroshi: "仲卸マスタ", tando: "担当者マスタ" };
-
+    const titleMap = { kokyaku: "顧客台帳", nakaoroshi: "仲卸台帳", tando: "担当者マスタ" };
     document.getElementById("master-title").innerText = titleMap[type];
 
+    const isContactType = type === 'kokyaku' || type === 'nakaoroshi';
+    document.getElementById("master-back-btn").style.display = isContactType ? 'none' : 'block';
+
+    if (isContactType) {
+      renderContactMasterList(type, list);
+    } else {
+      renderSimpleMasterList(type, list);
+    }
+
+    showView('master');
+  }
+
+  function renderContactMasterList(type, list) {
+    const dataset = type === 'kokyaku' ? appState.kokyaku : appState.nakaoroshi;
+    const f = masterFieldNames(type);
+
+    if (!dataset || dataset.length === 0) {
+      list.innerHTML = `<p style="font-size:0.85rem; color:#64748b; padding:20px; text-align:center;">登録データがありません</p>`;
+      return;
+    }
+
+    dataset.forEach(m => {
+      const id = m[f.id] || "";
+      const name = m[f.name] || "（名称未設定）";
+      const yakushoku = m[f.yakushoku] || "";
+      const tantosha = m[f.tantosha] || "";
+      const subLine = [yakushoku, tantosha].filter(Boolean).join(' ／ ');
+
+      const keitai = m[f.keitai] || "";
+      const tel = m[f.tel] || "";
+      const mail = m[f.mail] || "";
+      const hp = m[f.hp] || "";
+      const jusho = m[f.jusho] || "";
+
+      list.innerHTML += `
+        <div class="list-item" style="align-items:center;">
+          <div style="flex:1; cursor:pointer; min-width:0; padding-right:8px;" onclick="openMasterEdit('${type}', '${String(id).replace(/'/g, "\\'")}')">
+            <div class="title">${name}</div>
+            <div class="sub">${subLine || '&nbsp;'}</div>
+          </div>
+          <div style="display:flex; gap:10px; flex-shrink:0;" onclick="event.stopPropagation()">
+            ${keitai ? `<a href="tel:${keitai}" style="text-decoration:none; font-size:1.5rem;">📱</a>` : ''}
+            ${tel ? `<a href="tel:${tel}" style="text-decoration:none; font-size:1.5rem;">📞</a>` : ''}
+            ${mail ? `<a href="mailto:${mail}" style="text-decoration:none; font-size:1.5rem;">✉</a>` : ''}
+            ${hp ? `<a href="${hp.startsWith('http') ? hp : 'https://' + hp}" target="_blank" rel="noopener" style="text-decoration:none; font-size:1.5rem;">🌎</a>` : ''}
+            ${jusho ? `<a href="${getMapUrl(jusho)}" target="_blank" rel="noopener" style="text-decoration:none; font-size:1.5rem;">🗺</a>` : ''}
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  function renderSimpleMasterList(type, list) {
+    const dataMap = { tando: appState.tando };
     (dataMap[type] || []).forEach(m => {
-      const name = m.顧客名 || m.仲卸名 || m.担当名 || "（名前なし）";
-      const tel = m.顧客TEL || m.仲卸TEL || m.担当TEL || "";
-      const mail = m.顧客メール || m.仲卸メール || m.担当メール || "";
+      const name = m.担当名 || "（名前なし）";
+      const tel = m.担当携帯 || m.担当TEL || "";
+      const mail = m.担当メール || "";
 
       list.innerHTML += `
         <div class="list-item">
@@ -1606,6 +1831,156 @@
         </div>
       `;
     });
+  }
+
+  /* --- 顧客台帳・仲卸台帳 編集ページ --- */
+  function fillMasterEditForm(rec) {
+    const f = masterFieldNames(appState.currentMasterType);
+    document.getElementById("me-name").value = rec[f.name] || "";
+    document.getElementById("me-yakushoku").value = rec[f.yakushoku] || "";
+    document.getElementById("me-tantosha").value = rec[f.tantosha] || "";
+    document.getElementById("me-keitai").value = rec[f.keitai] || "";
+    document.getElementById("me-tel").value = rec[f.tel] || "";
+    document.getElementById("me-fax").value = rec[f.fax] || "";
+    document.getElementById("me-mail").value = rec[f.mail] || "";
+    document.getElementById("me-hp").value = rec[f.hp] || "";
+    document.getElementById("me-yubin").value = rec[f.yubin] || "";
+    document.getElementById("me-jusho").value = rec[f.jusho] || "";
+  }
+
+  function openMasterNew(type) {
+    appState.currentMasterType = type;
+    appState.currentMasterEditId = null;
+    fillMasterEditForm({});
+    document.getElementById("master-edit-title").innerText = (type === 'kokyaku' ? '顧客' : '仲卸') + " 新規登録";
+    document.getElementById("fab-master-delete-btn").style.display = "none";
+    showView('masterEdit');
+  }
+
+  function openMasterEdit(type, id) {
+    appState.currentMasterType = type;
+    appState.currentMasterEditId = id;
+    const dataset = type === 'kokyaku' ? appState.kokyaku : appState.nakaoroshi;
+    const f = masterFieldNames(type);
+    const rec = dataset.find(d => String(d[f.id]).trim() === String(id).trim());
+    if (!rec) return;
+    fillMasterEditForm(rec);
+    document.getElementById("master-edit-title").innerText = (type === 'kokyaku' ? '顧客' : '仲卸') + " 情報編集";
+    document.getElementById("fab-master-delete-btn").style.display = "flex";
+    showView('masterEdit');
+  }
+
+  async function saveMasterEdit() {
+    const type = appState.currentMasterType;
+    const f = masterFieldNames(type);
+    const name = document.getElementById("me-name").value.trim();
+    if (!name) { alert("名称を入力してください"); return; }
+
+    const data = {};
+    data[f.id] = appState.currentMasterEditId || "";
+    data[f.name] = name;
+    data[f.yakushoku] = document.getElementById("me-yakushoku").value;
+    data[f.tantosha] = document.getElementById("me-tantosha").value;
+    data[f.keitai] = document.getElementById("me-keitai").value;
+    data[f.tel] = document.getElementById("me-tel").value;
+    data[f.fax] = document.getElementById("me-fax").value;
+    data[f.mail] = document.getElementById("me-mail").value;
+    data[f.hp] = document.getElementById("me-hp").value;
+    data[f.yubin] = document.getElementById("me-yubin").value;
+    data[f.jusho] = document.getElementById("me-jusho").value;
+
+    updateStatus("保存中...", "saving", true);
+    try {
+      const res = await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "saveMaster", type: type, data: data })
+      });
+      const json = await res.json();
+      const savedId = (json.data && json.data[f.id]) || appState.currentMasterEditId;
+
+      updateStatus("保存完了しました", "saved", false);
+      await fetchAllData();
+
+      if (appState.masterReturnContext) {
+        const ctx = appState.masterReturnContext;
+        appState.masterReturnContext = null;
+        showView('urikake');
+        switchFormType(ctx.formType, false);
+        restoreFormSnapshot(ctx.snapshot);
+        const partnerSelect = document.getElementById("u-顧客ID");
+        if (savedId) partnerSelect.value = savedId;
+        updateStatus(`${name} を登録し選択しました`, "saved", false);
+      } else {
+        showMasterView(type);
+      }
+    } catch(e) {
+      updateStatus("通信エラーで保存できませんでした", "", false);
+    }
+  }
+
+  function openDeleteConfirmModal() {
+    document.getElementById("delete-confirm-modal").style.display = "flex";
+  }
+  function closeDeleteConfirmModal() {
+    document.getElementById("delete-confirm-modal").style.display = "none";
+  }
+  async function executeDeleteConfirmed() {
+    closeDeleteConfirmModal();
+    const type = appState.currentMasterType;
+    const id = appState.currentMasterEditId;
+    if (!id) { showMasterView(type); return; }
+
+    updateStatus("削除中...", "saving", true);
+    try {
+      await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "deleteMaster", type: type, id: id })
+      });
+      updateStatus("削除しました", "saved", false);
+      await fetchAllData();
+      showMasterView(type);
+    } catch(e) {
+      updateStatus("通信エラーで削除できませんでした", "", false);
+    }
+  }
+
+  /* --- フォームの一時退避（顧客・仲卸の新規登録から戻る用） --- */
+  function captureFormSnapshot() {
+    return {
+      title: document.getElementById("u-依頼件名").value,
+      staffId: document.getElementById("u-担当ID").value,
+      formData: JSON.parse(JSON.stringify(currentFormData)),
+      items: JSON.parse(JSON.stringify(currentItems)),
+      activeTab: appState.activeTab,
+      isEditMode: appState.isEditMode
+    };
+  }
+
+  function restoreFormSnapshot(snap) {
+    if (!snap) return;
+    currentFormData = snap.formData;
+    currentItems = snap.items;
+    appState.activeTab = snap.activeTab;
+    appState.isEditMode = snap.isEditMode;
+    document.getElementById("u-依頼件名").value = snap.title;
+    document.getElementById("u-担当ID").value = snap.staffId;
+    renderItemRows();
+    switchDateTab(snap.activeTab);
+    document.getElementById("fab-delete-btn").style.display = snap.isEditMode ? "flex" : "none";
+  }
+
+  function onPartnerSelectChanged() {
+    const sel = document.getElementById("u-顧客ID");
+    if (sel.value === "__new__") {
+      const type = appState.currentFormType === 'kaikake' ? 'nakaoroshi' : 'kokyaku';
+      syncTabValueToState();
+      appState.masterReturnContext = {
+        formType: appState.currentFormType,
+        snapshot: captureFormSnapshot()
+      };
+      sel.value = "";
+      openMasterNew(type);
+    }
   }
 
   function toggleMenu(force) {
