@@ -229,6 +229,12 @@
     .chip-group { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
     .chip { background: #e2e8f0; padding: 6px 12px; border-radius: 16px; font-size: 0.8rem; cursor: pointer; font-weight: 500; }
     .chip.active { background: var(--primary-light); color: white; }
+    .bunrui-chip-group { display: flex; flex-wrap: nowrap; gap: 4px; width: 100%; margin-top: 6px; }
+    .bunrui-chip-group .chip {
+      flex: 1; min-width: 0; text-align: center; padding: 6px 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bunrui-chip-group.bunrui-5 .chip { font-size: 0.65rem; padding: 6px 1px; }
 
     .btn-add-item { background: #eff6ff; color: var(--primary-light); border: 2px dashed var(--primary-light); width: 100%; padding: 10px; font-weight: bold; border-radius: 6px; cursor: pointer; text-align: center; margin-bottom: 12px; }
 
@@ -396,7 +402,7 @@
         </div>
 
         <div class="form-group">
-          <label style="color:var(--primary); font-size:0.95rem;">品名・産地・価格情報</label>
+          <label style="color:var(--primary); font-size:0.95rem;">品名情報</label>
           <p style="font-size:0.75rem; color:#64748b; margin-bottom:8px;">※各明細の「取消し」ボタンでその明細を取消しできます</p>
           
           <div id="items-container"></div>
@@ -1350,8 +1356,13 @@
     }
   }
 
+  const BUNRUI_OPTIONS = {
+    '青果': ['野菜', '果物'],
+    '水産': ['大物', '鮮魚', '活魚', '冷凍', '塩干加工']
+  };
+
   function addItemRow(initialData = null) {
-    const item = initialData || { id: "", category: "青果", name: "", sanchi: "", price: "", amount: "", check: "", isDiscount: false };
+    const item = initialData || { id: "", category: "青果", bunrui: "野菜", name: "", sanchi: "", price: "", amount: "", check: "", isDiscount: false };
     currentItems.push(item);
     renderItemRows();
   }
@@ -1408,8 +1419,11 @@
           <div class="chip ${item.category === '青果' ? 'active' : ''}" onclick="selectItemCategory(${index}, '青果')">青果</div>
           <div class="chip ${item.category === '水産' ? 'active' : ''}" onclick="selectItemCategory(${index}, '水産')">水産</div>
         </div>
+        <div class="bunrui-chip-group ${BUNRUI_OPTIONS[item.category].length >= 5 ? 'bunrui-5' : ''}" style="margin-bottom:8px;">
+          ${BUNRUI_OPTIONS[item.category].map(b => `<div class="chip ${item.bunrui === b ? 'active' : ''}" onclick="selectItemBunrui(${index}, '${b}')">${b}</div>`).join('')}
+        </div>
         <select class="form-control" style="margin-bottom:6px;" onchange="onItemSelectChange(${index}, this.value)" id="item-sel-${index}">
-          <option value="">マスタ選択...</option>
+          <option value="">品名選択...</option>
         </select>
         <div class="chip-group" id="sanchi-chips-${index}" style="margin-bottom:6px;"></div>
         <div style="display: flex; gap: 8px; margin-bottom:8px;">
@@ -1431,15 +1445,24 @@
 
   function selectItemCategory(index, cat) {
     currentItems[index].category = cat;
+    currentItems[index].bunrui = BUNRUI_OPTIONS[cat][0];
+    renderItemRows();
+  }
+
+  function selectItemBunrui(index, bunrui) {
+    currentItems[index].bunrui = bunrui;
     renderItemRows();
   }
 
   function populateItemDropdown(index) {
     const sel = document.getElementById(`item-sel-${index}`);
     if (!sel) return;
-    sel.innerHTML = `<option value="">マスタ選択...</option>`;
-    const rawList = currentItems[index].category === '青果' ? appState.seika : appState.suisan;
-    const names = [...new Set(rawList.map(i => i.品名 || i.名 || "").filter(Boolean))];
+    sel.innerHTML = `<option value="">品名選択...</option>`;
+    const item = currentItems[index];
+    const rawList = item.category === '青果' ? appState.seika : appState.suisan;
+    const filtered = rawList.filter(i => (i.分類 || "") === item.bunrui);
+    const names = [...new Set(filtered.map(i => i.品名 || i.名 || "").filter(Boolean))];
+    names.sort((a, b) => a.localeCompare(b, 'ja'));
     names.forEach(n => {
       sel.innerHTML += `<option value="${n}">${n}</option>`;
     });
@@ -1710,6 +1733,7 @@
       return {
         id: item[idKey] || item.ID || "",
         category: isDiscount ? "値引き" : "青果",
+        bunrui: isDiscount ? "" : "野菜",
         name: item.品名 || "",
         sanchi: item.産地 || "",
         price: item.単価 || "",
