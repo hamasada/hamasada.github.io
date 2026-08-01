@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   <title>濱貞アプリ</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     :root {
       --primary: #1e3a8a;
@@ -235,10 +236,18 @@
     .modal-card { background: white; border-radius: 12px; width: 100%; max-width: 420px; padding: 20px; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; }
 
     .fab-container { position: fixed; bottom: 20px; right: 20px; display: flex; gap: 12px; z-index: 250; }
+    .fab-container-left { position: fixed; bottom: 20px; left: 20px; display: flex; gap: 12px; z-index: 250; }
     .fab {
       background: var(--primary-light); color: white; width: 56px; height: 56px; border-radius: 28px;
       display: flex; align-items: center; justify-content: center; font-size: 1.8rem;
       box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; border: none;
+    }
+    .fab-google { background: white; color: #4285F4; border: 2px solid #4285F4; font-size: 1.3rem; font-weight: bold; font-family: Georgia, serif; }
+
+    /* Googleカレンダー予定タイトル (カレンダーマス先頭行) */
+    .gcal-event-title {
+      font-size: 0.6rem; color: #1a73e8; background: #e8f0fe; border-radius: 2px; padding: 0 2px;
+      white-space: nowrap; overflow: hidden; line-height: 1.3; margin-top: 1px; width: 100%;
     }
   </style>
 </head>
@@ -288,6 +297,37 @@
     </div>
   </div>
 
+  <!-- キャンセル(論理削除)モーダル -->
+  <div class="modal-overlay" id="cancel-modal" style="display: none;">
+    <div class="modal-card">
+      <h3 style="color:#dc2626; margin-bottom:12px;">キャンセル理由を入力してください</h3>
+      <div class="form-group">
+        <label>キャンセル日付</label>
+        <input type="date" class="form-control" id="cancel-date-input">
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>キャンセル理由</label>
+        <textarea class="form-control" id="cancel-reason-input" rows="3" placeholder="キャンセル理由を入力..."></textarea>
+      </div>
+      <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:12px; display:flex; gap:8px;">
+        <button class="btn-sm" style="background:#94a3b8; flex:1; padding:12px;" onclick="closeCancelModal()">閉じる</button>
+        <button class="btn-sm" style="background:#dc2626; flex:2; padding:12px; font-size:0.95rem; font-weight:bold;" onclick="confirmCancelRecord()">キャンセルする</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Googleカレンダー選択モーダル -->
+  <div class="modal-overlay" id="google-cal-list-modal" style="display: none;" onclick="closeGoogleCalListModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="color:var(--primary); font-size:1.05rem;">📅 Googleカレンダー選択</h3>
+        <button class="btn-sm" style="background:#64748b;" onclick="closeGoogleCalListModal()">✕ 閉じる</button>
+      </div>
+      <p style="font-size:0.8rem; color:#64748b; margin-bottom:10px;">表示するカレンダーにチェックを入れてください</p>
+      <div id="google-cal-list" style="flex:1; overflow-y:auto;"></div>
+    </div>
+  </div>
+
   <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
   <div class="drawer" id="drawer">
     <h3>メニュー</h3>
@@ -334,7 +374,7 @@
         </div>
 
         <div class="form-group">
-          <label>進捗ステータス・日付・メモ</label>
+          <label>進捗ステータス</label>
           <div class="tabs" id="date-tabs-container"></div>
 
           <div id="tab-date-container">
@@ -366,6 +406,33 @@
         <button class="btn-sm" style="background:#64748b; width:100%; padding:12px; margin-top:12px;" onclick="showView('calendar')">戻る</button>
       </div>
     </div>
+
+    <div id="view-google-event" style="display: none; height:100%; overflow-y:auto; padding-bottom:80px;">
+      <div class="view-card">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+          <span style="background:#e8f0fe; color:#1a73e8; font-size:0.75rem; padding:2px 8px; border-radius:4px; font-weight:bold;">Googleカレンダー</span>
+          <span style="font-size:0.75rem; color:#64748b;">閲覧のみ（編集は今後対応予定）</span>
+        </div>
+        <h2 id="gcal-detail-title" style="font-size:1.15rem; color:var(--primary); margin-bottom:14px;"></h2>
+
+        <div class="form-group">
+          <label>カレンダー</label>
+          <div id="gcal-detail-calname" class="form-control" style="background:#f8fafc;"></div>
+        </div>
+        <div class="form-group">
+          <label>日時</label>
+          <div id="gcal-detail-datetime" class="form-control" style="background:#f8fafc;"></div>
+        </div>
+        <div class="form-group">
+          <label>場所</label>
+          <div id="gcal-detail-location" class="form-control" style="background:#f8fafc;"></div>
+        </div>
+        <div class="form-group">
+          <label>詳細</label>
+          <div id="gcal-detail-desc" class="form-control" style="background:#f8fafc; white-space:pre-wrap; min-height:80px;"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="numpad-overlay" id="numpad">
@@ -390,25 +457,48 @@
     <button class="fab" onclick="openNewRecord('urikake')">＋</button>
   </div>
 
+  <div id="fab-google-btn-group" class="fab-container-left" style="display: none;">
+    <button class="fab fab-google" onclick="openGoogleCalListModal()">G</button>
+  </div>
+
+  <div id="fab-form-back" class="fab-container-left" style="display: none;">
+    <button class="fab" style="background:#64748b;" onclick="showView('calendar')">←</button>
+  </div>
+
   <div id="fab-form-group" class="fab-container" style="display: none;">
-    <button class="fab" style="background:#dc2626;" onclick="showView('calendar')">❌</button>
+    <button class="fab" id="fab-delete-btn" style="background:#dc2626; display:none;" onclick="openCancelModal()">🗑️</button>
     <button class="fab" style="background:#16a34a;" onclick="saveFormData()">💾</button>
+  </div>
+
+  <div id="fab-gcal-detail-back" class="fab-container-left" style="display: none;">
+    <button class="fab" style="background:#64748b;" onclick="closeGoogleEventDetail()">←</button>
   </div>
 
 <script>
   const GAS_URL = "https://script.google.com/macros/s/AKfycbyc0iwAx9wwaamaxGGpNEcbR3CJ-9WY06aLIGmdYYwx7ExX3X7BugbeHuSP1yG_dJOW/exec";
+
+  const GOOGLE_CLIENT_ID = "154863690218-sm6g80n7kppslgt72qpu5939er0g7pfc.apps.googleusercontent.com";
+  const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
 
   let appState = {
     urikake: [], kaikake: [], kokyaku: [], nakaoroshi: [], tando: [], seika: [], suisan: [],
     currentDate: new Date(),
     calViewMode: 'month',
     currentFormType: 'urikake',
+    isEditMode: false,
     activeTab: '依頼',
     currentNumTargetIndex: null,
     currentNumTargetField: null,
     selectedStaffId: localStorage.getItem("hamasada_staff_id") || "",
-    selectedDetailDate: getTodayString()
+    selectedDetailDate: getTodayString(),
+    googleAuthed: false,
+    googleAccessToken: null,
+    googleTokenExpiry: 0,
+    googleCalendars: [],
+    googleEventsByDate: {}
   };
+
+  let googleTokenClient = null;
 
   let currentFormData = {};
   let currentItems = [];
@@ -435,6 +525,7 @@
     initSwipeEvents();
     await fetchAllData();
     checkStaffSelection();
+    await restoreGoogleAuth();
     renderCalendar();
   };
 
@@ -534,28 +625,219 @@
     }
   }
 
-  /* --- Googleカレンダー連携 --- */
-  async function syncGoogleCalendar() {
+  /* --- Googleカレンダー連携 (Google Identity Services によるOAuth) --- */
+  function initGoogleTokenClient() {
+    if (googleTokenClient) return googleTokenClient;
+    if (typeof google === "undefined" || !google.accounts || !google.accounts.oauth2) {
+      alert("Google認証の読み込みに失敗しました。通信環境を確認し、再度お試しください。");
+      return null;
+    }
+    googleTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: GOOGLE_CALENDAR_SCOPE,
+      callback: async (resp) => {
+        if (resp.error) {
+          updateStatus("Google認証がキャンセルまたは失敗しました", "", false);
+          return;
+        }
+        appState.googleAccessToken = resp.access_token;
+        appState.googleTokenExpiry = Date.now() + ((resp.expires_in || 3600) * 1000);
+        appState.googleAuthed = true;
+        localStorage.setItem("hamasada_google_token", appState.googleAccessToken);
+        localStorage.setItem("hamasada_google_token_expiry", String(appState.googleTokenExpiry));
+        await onGoogleAuthSuccess();
+      }
+    });
+    return googleTokenClient;
+  }
+
+  function syncGoogleCalendar() {
     toggleMenu(false);
-    updateStatus("Googleカレンダー連携中...", "saving", true);
+    const client = initGoogleTokenClient();
+    if (!client) return;
+    updateStatus("Googleアカウントの認証を確認しています...", "saving", true);
+    client.requestAccessToken({ prompt: appState.googleAccessToken ? "" : "consent" });
+  }
+
+  async function onGoogleAuthSuccess() {
+    document.getElementById("fab-google-btn-group").style.display =
+      document.getElementById("view-calendar").style.display !== "none" ? "flex" : "none";
+    updateStatus("Googleカレンダー認証が完了しました", "saved", false);
+    await fetchGoogleCalendarList();
+    await fetchGoogleEventsForCheckedCalendars();
+    renderCalendar();
+    openGoogleCalListModal();
+  }
+
+  async function restoreGoogleAuth() {
+    const token = localStorage.getItem("hamasada_google_token");
+    const expiry = Number(localStorage.getItem("hamasada_google_token_expiry") || 0);
+    if (token && expiry > Date.now()) {
+      appState.googleAccessToken = token;
+      appState.googleTokenExpiry = expiry;
+      appState.googleAuthed = true;
+      document.getElementById("fab-google-btn-group").style.display = "flex";
+      await fetchGoogleCalendarList();
+      await fetchGoogleEventsForCheckedCalendars();
+    }
+  }
+
+  async function fetchGoogleCalendarList() {
+    if (!appState.googleAccessToken) return;
     try {
-      const res = await fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "syncGoogleCalendar", staffId: appState.selectedStaffId })
+      const res = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=freeBusyReader", {
+        headers: { Authorization: `Bearer ${appState.googleAccessToken}` }
       });
       const json = await res.json();
-      if (json.status === "success") {
-        alert("Googleカレンダーとの同期が完了しました！");
-        updateStatus("Googleカレンダー同期完了", "saved", false);
-      } else {
-        alert("Googleカレンダー連携: " + (json.message || "完了しました"));
-        updateStatus("連携完了", "saved", false);
+      if (json.items) {
+        const savedChecked = JSON.parse(localStorage.getItem("hamasada_google_checked_cals") || "[]");
+        appState.googleCalendars = json.items.map(c => ({
+          id: c.id,
+          summary: c.summary || c.id,
+          color: c.backgroundColor || "#4285F4",
+          checked: savedChecked.length ? savedChecked.includes(c.id) : !!c.primary
+        }));
+      } else if (json.error) {
+        // トークン失効時は認証状態をリセット
+        if (json.error.code === 401) {
+          appState.googleAuthed = false;
+          appState.googleAccessToken = null;
+          localStorage.removeItem("hamasada_google_token");
+          document.getElementById("fab-google-btn-group").style.display = "none";
+        }
       }
     } catch(e) {
-      // API直接連携フォールバック
-      window.open("https://calendar.google.com/", "_blank");
-      updateStatus("Googleカレンダーを開きました", "saved", false);
+      updateStatus("Googleカレンダー一覧の取得に失敗しました", "", false);
     }
+  }
+
+  function getVisibleDateRange() {
+    let start, end;
+    if (appState.calViewMode === 'month') {
+      const year = appState.currentDate.getFullYear();
+      const month = appState.currentDate.getMonth();
+      start = new Date(year, month - 1, 20);
+      end = new Date(year, month + 2, 10);
+    } else {
+      const today = appState.currentDate;
+      const dayShift = (today.getDay() + 6) % 7;
+      start = new Date(today);
+      start.setDate(today.getDate() - dayShift - 3);
+      end = new Date(start);
+      end.setDate(start.getDate() + 20);
+    }
+    return { timeMin: start.toISOString(), timeMax: end.toISOString() };
+  }
+
+  async function fetchGoogleEventsForCheckedCalendars() {
+    if (!appState.googleAccessToken) return;
+    const checked = (appState.googleCalendars || []).filter(c => c.checked);
+    appState.googleEventsByDate = {};
+    if (checked.length === 0) return;
+
+    const range = getVisibleDateRange();
+    for (const cal of checked) {
+      try {
+        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal.id)}/events?timeMin=${encodeURIComponent(range.timeMin)}&timeMax=${encodeURIComponent(range.timeMax)}&singleEvents=true&orderBy=startTime`;
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${appState.googleAccessToken}` } });
+        const json = await res.json();
+        (json.items || []).forEach(ev => {
+          const dateStr = ev.start && (ev.start.date || (ev.start.dateTime ? ev.start.dateTime.split("T")[0] : ""));
+          if (!dateStr) return;
+          if (!appState.googleEventsByDate[dateStr]) appState.googleEventsByDate[dateStr] = [];
+          appState.googleEventsByDate[dateStr].push({
+            id: ev.id,
+            title: ev.summary || "（無題の予定）",
+            calId: cal.id,
+            calName: cal.summary,
+            calColor: cal.color,
+            start: ev.start,
+            end: ev.end,
+            description: ev.description || "",
+            location: ev.location || ""
+          });
+        });
+      } catch(e) { /* 個別カレンダーの取得失敗は無視 */ }
+    }
+  }
+
+  function getGCalTitleForDate(dateStr) {
+    const events = (appState.googleEventsByDate || {})[dateStr];
+    if (!events || events.length === 0) return "";
+    return events.length > 1 ? `${events[0].title} 他${events.length - 1}件` : events[0].title;
+  }
+
+  function openGoogleCalListModal() {
+    if (!appState.googleAuthed) { syncGoogleCalendar(); return; }
+    renderGoogleCalList();
+    document.getElementById("google-cal-list-modal").style.display = "flex";
+  }
+
+  function closeGoogleCalListModal(e) {
+    if (!e || e.target.id === 'google-cal-list-modal' || e.type === 'click') {
+      document.getElementById("google-cal-list-modal").style.display = "none";
+    }
+  }
+
+  function renderGoogleCalList() {
+    const list = document.getElementById("google-cal-list");
+    list.innerHTML = "";
+    if (!appState.googleCalendars || appState.googleCalendars.length === 0) {
+      list.innerHTML = `<p style="font-size:0.85rem; color:#64748b; padding:20px; text-align:center;">カレンダーが見つかりません</p>`;
+      return;
+    }
+    appState.googleCalendars.forEach(c => {
+      list.innerHTML += `
+        <div class="list-item" style="cursor:pointer;" onclick="toggleGoogleCal('${c.id}')">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <input type="checkbox" ${c.checked ? 'checked' : ''} style="width:18px; height:18px;" onclick="event.stopPropagation(); toggleGoogleCal('${c.id}')">
+            <span style="width:12px; height:12px; border-radius:50%; background:${c.color}; display:inline-block; flex-shrink:0;"></span>
+            <span class="title">${c.summary}</span>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  async function toggleGoogleCal(calId) {
+    const cal = appState.googleCalendars.find(c => c.id === calId);
+    if (!cal) return;
+    cal.checked = !cal.checked;
+    const checkedIds = appState.googleCalendars.filter(c => c.checked).map(c => c.id);
+    localStorage.setItem("hamasada_google_checked_cals", JSON.stringify(checkedIds));
+    renderGoogleCalList();
+    updateStatus("Googleカレンダーの予定を取得中...", "saving", true);
+    await fetchGoogleEventsForCheckedCalendars();
+    renderCalendar();
+    updateStatus("同期完了", "saved", false);
+  }
+
+  function formatGCalDateTime(start, end) {
+    if (!start) return "";
+    if (start.date) {
+      return end && end.date && end.date !== start.date ? `終日: ${start.date} 〜 ${end.date}` : `終日: ${start.date}`;
+    }
+    const fmt = (dtStr) => {
+      const d = new Date(dtStr);
+      return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    };
+    return `${fmt(start.dateTime)} 〜 ${end ? fmt(end.dateTime) : ''}`;
+  }
+
+  function openGoogleEventDetail(eventId, dateStr) {
+    const events = (appState.googleEventsByDate || {})[dateStr] || [];
+    const ev = events.find(e => e.id === eventId);
+    if (!ev) return;
+    document.getElementById("gcal-detail-title").innerText = ev.title;
+    document.getElementById("gcal-detail-calname").innerText = ev.calName || '';
+    document.getElementById("gcal-detail-datetime").innerText = formatGCalDateTime(ev.start, ev.end);
+    document.getElementById("gcal-detail-location").innerText = ev.location || '（場所の指定なし）';
+    document.getElementById("gcal-detail-desc").innerText = ev.description || '（詳細なし）';
+    showView('googleEvent');
+  }
+
+  function closeGoogleEventDetail() {
+    showView('calendar');
   }
 
   function checkStaffSelection() {
@@ -661,6 +943,7 @@
 
       const isToday = dateStr === getTodayString();
       const badges = getStatusBadgesForDate(dateStr);
+      const gcalTitle = getGCalTitleForDate(dateStr);
 
       grid.innerHTML += `
         <div class="cal-day ${bgClass} ${isToday ? 'today' : ''}" onclick="onDateClick('${dateStr}')">
@@ -669,6 +952,7 @@
             <span class="rokuyou">${rokuyou}</span>
           </div>
           ${holidayName ? `<div class="holiday-tag">${holidayName}</div>` : ''}
+          ${gcalTitle ? `<div class="gcal-event-title">${gcalTitle}</div>` : ''}
           <div class="cal-grid-4">${badges.slice(0, 4).join('')}</div>
         </div>
       `;
@@ -743,12 +1027,14 @@
     const displayLabel = `${d.getMonth() + 1}/${d.getDate()}`;
     const isToday = dateStr === getTodayString();
     const badges = getStatusBadgesForDate(dateStr);
+    const gcalTitle = getGCalTitleForDate(dateStr);
 
     const cell = document.createElement("div");
     cell.className = `cal-2week-day ${bgClass} ${isToday ? 'today' : ''}`;
     cell.onclick = () => onDateClick(dateStr);
     cell.innerHTML = `
       <div class="day-num">${displayLabel}</div>
+      ${gcalTitle ? `<div class="gcal-event-title">${gcalTitle}</div>` : ''}
       <div class="cal-grid-horizontal">${badges.slice(0, 4).join('')}</div>
     `;
     return cell;
@@ -778,12 +1064,18 @@
       appState.currentDate.setDate(appState.currentDate.getDate() + (delta * 14));
     }
     renderCalendar();
+    if (appState.googleAuthed) {
+      fetchGoogleEventsForCheckedCalendars().then(renderCalendar);
+    }
   }
 
   function toggleCalendarView() {
     appState.calViewMode = appState.calViewMode === 'month' ? '2week' : 'month';
     document.getElementById("cal-toggle-btn").innerText = appState.calViewMode === 'month' ? '2週間表示' : '月表示';
     renderCalendar();
+    if (appState.googleAuthed) {
+      fetchGoogleEventsForCheckedCalendars().then(renderCalendar);
+    }
   }
 
   function onDateClick(dateStr) {
@@ -794,10 +1086,22 @@
 
     const kaikakeItems = (appState.kaikake || []).filter(k => String(k.チェック).toUpperCase() !== 'X' && extractAllDatesFromRecord(k).includes(dateStr));
     const urikakeItems = (appState.urikake || []).filter(u => String(u.チェック).toUpperCase() !== 'X' && extractAllDatesFromRecord(u).includes(dateStr));
+    const gcalEvents = (appState.googleEventsByDate || {})[dateStr] || [];
 
-    if(kaikakeItems.length === 0 && urikakeItems.length === 0) {
+    if(kaikakeItems.length === 0 && urikakeItems.length === 0 && gcalEvents.length === 0) {
       list.innerHTML = `<p style="font-size:0.85rem; color:#64748b; padding:20px; text-align:center;">この日の登録データはありません</p>`;
     } else {
+      gcalEvents.forEach(ev => {
+        list.innerHTML += `
+          <div class="list-item" style="border-left: 4px solid ${ev.calColor || '#4285F4'};" onclick="closeDetailModal(); openGoogleEventDetail('${ev.id}', '${dateStr}')">
+            <div>
+              <div class="title"><span style="background:#e8f0fe; color:#1a73e8; font-size:0.75rem; padding:2px 6px; border-radius:4px; margin-right:6px;">Google</span>${ev.title}</div>
+              <div class="sub">${ev.calName || ''}</div>
+            </div>
+            <div style="font-size:1.2rem;">📅</div>
+          </div>
+        `;
+      });
       kaikakeItems.forEach(item => {
         const nakaoroshi = appState.nakaoroshi.find(n => 
           String(n.仲卸ID || n.ID || Object.values(n)[0]) === String(item.仲卸ID || item.顧客ID)
@@ -880,8 +1184,7 @@
         { name: '発注', icon: '発' },
         { name: '入荷', icon: '入' },
         { name: '請求', icon: '' },
-        { name: '支払', icon: '' },
-        { name: 'キャンセル', icon: '' }
+        { name: '支払', icon: '' }
       ]);
     } else {
       partnerLabel.innerText = "顧客・担当";
@@ -897,8 +1200,7 @@
         { name: '見積', icon: '見' },
         { name: '納品', icon: '納' },
         { name: '請求', icon: '' },
-        { name: '入金', icon: '' },
-        { name: 'キャンセル', icon: '' }
+        { name: '入金', icon: '' }
       ]);
     }
 
@@ -1104,7 +1406,8 @@
           "キャンセル日": currentFormData["キャンセル日"] || "",
           "依頼内容": currentFormData["依頼内容"] || "",
           "メモ": currentFormData["メモ"] || currentFormData["依頼内容"] || "",
-          "キャンセル理由": currentFormData["キャンセル理由"] || ""
+          "キャンセル理由": currentFormData["キャンセル理由"] || "",
+          "キャンセル内容": currentFormData["キャンセル理由"] || currentFormData["キャンセル内容"] || ""
         };
 
         await fetch(GAS_URL, {
@@ -1119,6 +1422,34 @@
     } catch(e) {
       updateStatus("通信エラーで保存できませんでした", "", false);
     }
+  }
+
+  /* --- キャンセル(論理削除)処理 --- */
+  function openCancelModal() {
+    document.getElementById("cancel-date-input").value = getTodayString();
+    document.getElementById("cancel-reason-input").value = "";
+    document.getElementById("cancel-modal").style.display = "flex";
+  }
+
+  function closeCancelModal() {
+    document.getElementById("cancel-modal").style.display = "none";
+  }
+
+  async function confirmCancelRecord() {
+    const cDate = document.getElementById("cancel-date-input").value;
+    const cReason = document.getElementById("cancel-reason-input").value.trim();
+
+    if (!cDate) { alert("キャンセル日付を入力してください"); return; }
+    if (!cReason) { alert("キャンセル理由を入力してください"); return; }
+
+    syncTabValueToState();
+    currentFormData["キャンセル日"] = cDate;
+    currentFormData["キャンセル理由"] = cReason;
+    currentFormData["キャンセル内容"] = cReason;
+    currentItems.forEach(item => { item.check = 'X'; });
+
+    closeCancelModal();
+    await saveFormData();
   }
 
   function switchDateTab(tabName) {
@@ -1176,9 +1507,13 @@
     document.getElementById("view-calendar").style.display = viewName === 'calendar' ? 'flex' : 'none';
     document.getElementById("view-urikake-form").style.display = viewName === 'urikake' ? 'block' : 'none';
     document.getElementById("view-master").style.display = viewName === 'master' ? 'block' : 'none';
+    document.getElementById("view-google-event").style.display = viewName === 'googleEvent' ? 'block' : 'none';
 
     document.getElementById("fab-calendar-group").style.display = viewName === 'calendar' ? 'flex' : 'none';
     document.getElementById("fab-form-group").style.display = viewName === 'urikake' ? 'flex' : 'none';
+    document.getElementById("fab-form-back").style.display = viewName === 'urikake' ? 'flex' : 'none';
+    document.getElementById("fab-gcal-detail-back").style.display = viewName === 'googleEvent' ? 'flex' : 'none';
+    document.getElementById("fab-google-btn-group").style.display = (viewName === 'calendar' && appState.googleAuthed) ? 'flex' : 'none';
 
     if (viewName === 'calendar') {
       renderCalendar();
@@ -1188,6 +1523,7 @@
 
   function openNewRecord(type = 'urikake', targetDate = null) {
     appState.currentFormType = type;
+    appState.isEditMode = false;
     switchFormType(type, true);
 
     const initDate = targetDate || getTodayString();
@@ -1198,11 +1534,13 @@
     currentItems = [];
     addItemRow();
 
+    document.getElementById("fab-delete-btn").style.display = "none";
     showView('urikake');
   }
 
   function openEditForm(id, type = 'urikake') {
     appState.currentFormType = type;
+    appState.isEditMode = true;
     switchFormType(type, false);
 
     const dataset = type === 'kaikake' ? appState.kaikake : appState.urikake;
@@ -1236,6 +1574,7 @@
     renderItemRows();
     const defaultTab = type === 'kaikake' ? '発注' : '依頼';
     switchDateTab(defaultTab);
+    document.getElementById("fab-delete-btn").style.display = "flex";
     showView('urikake');
   }
 
