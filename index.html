@@ -285,15 +285,17 @@
     </div>
   </div>
 
-  <!-- 初回 担当者選択モーダル -->
+  <!-- ログインモーダル（毎回起動時に表示） -->
   <div class="modal-overlay" id="staff-modal" style="display: none;">
     <div class="modal-card" style="text-align: center;">
-      <h3 style="color:var(--primary); margin-bottom:12px;">担当者を選択してください</h3>
-      <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 16px;">利用を開始するスタッフを選択します</p>
-      <select class="form-control" id="modal-staff-select" style="margin-bottom: 16px;">
+      <h3 style="color:var(--primary); margin-bottom:12px;">ログイン</h3>
+      <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 16px;">担当者を選択し、パスワードを入力してください</p>
+      <select class="form-control" id="modal-staff-select" style="margin-bottom: 12px;">
         <option value="">担当者を選択...</option>
       </select>
-      <button class="btn-sm" style="background:#16a34a; width:100%; padding:12px; font-size:1rem;" onclick="confirmStaffSelection()">確定して開始</button>
+      <input type="password" class="form-control" id="login-password-input" placeholder="パスワード" style="margin-bottom: 8px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); confirmStaffSelection();}">
+      <p id="login-error-msg" style="color:#dc2626; font-size:0.8rem; margin-bottom:8px; display:none;">担当者またはパスワードが正しくありません</p>
+      <button class="btn-sm" id="login-btn" style="background:#16a34a; width:100%; padding:12px; font-size:1rem; margin-top:8px;" onclick="confirmStaffSelection()">ログイン</button>
     </div>
   </div>
 
@@ -372,9 +374,9 @@
   <div class="drawer" id="drawer">
     <h3>メニュー</h3>
     <ul>
+      <li onclick="openAccountPage()">👤 アカウント</li>
       <li onclick="showMasterView('kokyaku')">👥 顧客台帳</li>
       <li onclick="showMasterView('nakaoroshi')">🏢 仲卸台帳</li>
-      <li onclick="showMasterView('tando')">👨‍💼 担当者台帳</li>
       <li id="gcal-menu-item" onclick="handleGoogleCalendarMenuClick()">📅 Googleカレンダー連携</li>
     </ul>
   </div>
@@ -488,9 +490,20 @@
           <label>郵便番号</label>
           <input type="text" class="form-control" id="me-yubin" placeholder="000-0000">
         </div>
-        <div class="form-group" id="me-group-jusho" style="margin-bottom:0;">
+        <div class="form-group" id="me-group-jusho">
           <label>住所</label>
           <textarea class="form-control" id="me-jusho" rows="2" placeholder="住所を入力（🗺マップ表示に使用）"></textarea>
+        </div>
+        <div class="form-group" id="me-group-password" style="display:none;">
+          <label>パスワード（変更する場合のみ入力）</label>
+          <input type="password" class="form-control" id="me-password" placeholder="●●●●">
+        </div>
+        <div class="form-group" id="me-group-password-confirm" style="display:none; margin-bottom:0;">
+          <label>パスワード確認</label>
+          <input type="password" class="form-control" id="me-password-confirm" placeholder="●●●●">
+        </div>
+        <div id="account-logout-group" style="display:none; margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
+          <button type="button" class="btn-sm" style="background:#dc2626; width:100%; padding:12px; font-size:0.9rem;" onclick="resetStaffCache()">🔓 ログアウト（担当者を切り替え）</button>
         </div>
       </div>
     </div>
@@ -559,7 +572,6 @@
   </div>
 
   <div id="fab-master-list-group" class="fab-container" style="display: none;">
-    <button class="fab" id="fab-cache-clear-btn" style="background:#f59e0b; display:none;" onclick="resetStaffCache()">🧹</button>
     <button class="fab" onclick="openMasterNew(appState.currentMasterType)">＋</button>
   </div>
 
@@ -569,7 +581,7 @@
   </div>
 
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbwHOKkFXgsDl4Yi3UAwRS7GD8a-LeFSzLuXe4KFpsxXBbwrVEh_ET557UnBvDSwUqmw/exec";
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbwnI4DBt5wk0gDAMDe0PoZmnfILCRLi54nDpyYoAosJTqqqq0rhMss7KNRABSL_go7r/exec";
 
   const GOOGLE_CLIENT_ID = "154863690218-sm6g80n7kppslgt72qpu5939er0g7pfc.apps.googleusercontent.com";
   const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
@@ -595,7 +607,8 @@
     googleCalendars: [],
     googleEventsByDate: {},
     loadedStart: null,
-    loadedEnd: null
+    loadedEnd: null,
+    dataLoadPromise: null
   };
 
   let googleTokenClient = null;
@@ -623,22 +636,29 @@
 
   window.onload = async () => {
     initSwipeEvents();
+    appState.activeTab = null;
+
+    // ログイン画面を即座に表示しつつ、裏でスプレッドシートの読込みを開始する
+    showLoginModal();
+
     updateStatus("データ同期中 (0%)", "saving", true);
-    try {
-      await fetchMasterData();
-      updateStatus("データ同期中 (50%)", "saving", true);
-      await fetchAllTransactions();
-      updateStatus("データ同期中 (100%)", "saving", true);
-      const uCount = (appState.urikake || []).length;
-      const kCount = (appState.kaikake || []).length;
-      updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved", false);
-    } catch(e) {
-      updateStatus("通信エラー", "", false);
-    }
-    checkStaffSelection();
-    await restoreGoogleAuth();
-    renderCalendar();
+    appState.dataLoadPromise = (async () => {
+      try {
+        await fetchMasterData();
+        updateStatus("データ同期中 (50%)", "saving", true);
+        await fetchAllTransactions();
+        updateStatus("データ同期中 (100%)", "saving", true);
+      } catch(e) {
+        updateStatus("通信エラー", "", false);
+      }
+    })();
   };
+
+  function showLoginModal() {
+    document.getElementById("login-error-msg").style.display = "none";
+    document.getElementById("login-password-input").value = "";
+    document.getElementById("staff-modal").style.display = "flex";
+  }
 
   /* --- 祝日・六曜データ・判定 --- */
   const HOLIDAYS = {
@@ -1007,23 +1027,56 @@
     showView('calendar');
   }
 
-  function checkStaffSelection() {
-    if (!appState.selectedStaffId) {
-      document.getElementById("staff-modal").style.display = "flex";
+  async function confirmStaffSelection() {
+    const val = document.getElementById("modal-staff-select").value;
+    const password = document.getElementById("login-password-input").value;
+    const errorMsg = document.getElementById("login-error-msg");
+    const loginBtn = document.getElementById("login-btn");
+    errorMsg.style.display = "none";
+
+    if (!val) { alert("担当者を選択してください"); return; }
+    if (!password) { alert("パスワードを入力してください"); return; }
+
+    loginBtn.disabled = true;
+    loginBtn.innerText = "確認中...";
+
+    try {
+      const res = await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "verifyStaffLogin", "担当ID": val, password: password })
+      });
+      const json = await res.json();
+
+      // パスワード入力欄は結果に関わらずキャッシュしない（毎回クリア）
+      document.getElementById("login-password-input").value = "";
+
+      if (json.status === "success" && json.data && json.data.valid) {
+        enableFullScreen();
+        appState.selectedStaffId = val;
+        localStorage.setItem("hamasada_staff_id", val);
+        document.getElementById("staff-modal").style.display = "none";
+
+        updateStatus("データ読込み中...", "saving", true);
+        if (appState.dataLoadPromise) await appState.dataLoadPromise;
+        const uCount = (appState.urikake || []).length;
+        const kCount = (appState.kaikake || []).length;
+        updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved", false);
+
+        await restoreGoogleAuth();
+        renderCalendar();
+      } else {
+        errorMsg.style.display = "block";
+      }
+    } catch(e) {
+      alert("通信エラーが発生しました。もう一度お試しください。");
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.innerText = "ログイン";
     }
   }
 
-  function confirmStaffSelection() {
-    enableFullScreen();
-    const val = document.getElementById("modal-staff-select").value;
-    if (!val) { alert("担当者を選択してください"); return; }
-    appState.selectedStaffId = val;
-    localStorage.setItem("hamasada_staff_id", val);
-    document.getElementById("staff-modal").style.display = "none";
-  }
-
   function resetStaffCache() {
-    if (!confirm("担当者キャッシュを消去し、再選択画面に戻りますか？")) return;
+    if (!confirm("ログアウトしますか？（担当者キャッシュを消去し、ログイン画面に戻ります）")) return;
     localStorage.removeItem("hamasada_staff_id");
     appState.selectedStaffId = "";
     location.reload();
@@ -1911,6 +1964,7 @@
 
   function syncTabValueToState() {
     const tabName = appState.activeTab;
+    if (!tabName) return; // タブが未確定の初期化直後は同期しない（古いDOM値での上書き防止）
     const dateKey = (tabName === "発注" ? "依頼" : tabName) + "日";
     const memoKey = tabName === "キャンセル" ? "キャンセル理由" : "依頼内容";
 
@@ -1975,7 +2029,11 @@
   function handleBackFab() {
     const v = appState.currentView;
     if (v === 'masterEdit') {
-      showMasterView(appState.currentMasterType);
+      if (appState.currentMasterType === 'tando') {
+        showView('calendar');
+      } else {
+        showMasterView(appState.currentMasterType);
+      }
     } else {
       showView('calendar');
     }
@@ -1984,6 +2042,7 @@
   function openNewRecord(type = 'urikake', targetDate = null) {
     appState.currentFormType = type;
     appState.isEditMode = false;
+    appState.activeTab = null; // 直前セッションのタブ名が残っていると、次のswitchDateTabで古いDOM値を書き戻してしまうためリセット
 
     const initDate = targetDate || getTodayString();
     currentFormData = {
@@ -2007,6 +2066,7 @@
   function openEditForm(id, type = 'urikake', initialTab = null) {
     appState.currentFormType = type;
     appState.isEditMode = true;
+    appState.activeTab = null; // 直前セッションのタブ名が残っていると、次のswitchDateTabで古いDOM値を書き戻してしまうためリセット
     switchFormType(type, false);
 
     const dataset = type === 'kaikake' ? appState.kaikake : appState.urikake;
@@ -2057,7 +2117,7 @@
       return {
         id: '担当ID', name: '担当名', yakushoku: null, tantosha: null,
         keitai: '担当携帯', tel: null, fax: '担当FAX', mail: '担当メール',
-        hp: null, yubin: null, jusho: null
+        hp: null, yubin: null, jusho: null, password: 'パスワード'
       };
     }
     const prefix = type === 'kokyaku' ? '顧客' : '仲卸';
@@ -2072,7 +2132,8 @@
       mail: prefix + 'メール',
       hp: prefix + 'HP',
       yubin: prefix + '〒',
-      jusho: prefix + '住所'
+      jusho: prefix + '住所',
+      password: null
     };
   }
 
@@ -2099,7 +2160,6 @@
     document.getElementById("master-title").innerText = titleMap[type];
 
     document.getElementById("master-back-btn").style.display = "none";
-    document.getElementById("fab-cache-clear-btn").style.display = type === 'tando' ? "flex" : "none";
 
     renderContactMasterList(type, list);
 
@@ -2159,6 +2219,9 @@
     document.getElementById("me-hp").value = f.hp ? (rec[f.hp] || "") : "";
     document.getElementById("me-yubin").value = f.yubin ? (rec[f.yubin] || "") : "";
     document.getElementById("me-jusho").value = f.jusho ? (rec[f.jusho] || "") : "";
+    // パスワードは受信データに含まれないため常に空欄（変更したい場合のみ入力）
+    document.getElementById("me-password").value = "";
+    document.getElementById("me-password-confirm").value = "";
 
     document.getElementById("me-group-yakushoku").style.display = f.yakushoku ? "block" : "none";
     document.getElementById("me-group-tantosha").style.display = f.tantosha ? "block" : "none";
@@ -2166,6 +2229,8 @@
     document.getElementById("me-group-hp").style.display = f.hp ? "block" : "none";
     document.getElementById("me-group-yubin").style.display = f.yubin ? "block" : "none";
     document.getElementById("me-group-jusho").style.display = f.jusho ? "block" : "none";
+    document.getElementById("me-group-password").style.display = f.password ? "block" : "none";
+    document.getElementById("me-group-password-confirm").style.display = f.password ? "block" : "none";
   }
 
   function openMasterNew(type) {
@@ -2185,9 +2250,19 @@
     const rec = dataset.find(d => String(d[f.id]).trim() === String(id).trim());
     if (!rec) return;
     fillMasterEditForm(rec);
-    document.getElementById("master-edit-title").innerText = masterTypeLabel(type) + " 情報編集";
-    document.getElementById("fab-master-delete-btn").style.display = "flex";
+    document.getElementById("master-edit-title").innerText = type === 'tando' ? "アカウント情報" : (masterTypeLabel(type) + " 情報編集");
+    document.getElementById("fab-master-delete-btn").style.display = type === 'tando' ? "none" : "flex";
+    document.getElementById("account-logout-group").style.display = type === 'tando' ? "block" : "none";
     showView('masterEdit');
+  }
+
+  function openAccountPage() {
+    toggleMenu(false);
+    if (!appState.selectedStaffId) {
+      alert("担当者が選択されていません");
+      return;
+    }
+    openMasterEdit('tando', appState.selectedStaffId);
   }
 
   async function saveMasterEdit() {
@@ -2208,6 +2283,19 @@
     if (f.hp) data[f.hp] = document.getElementById("me-hp").value;
     if (f.yubin) data[f.yubin] = document.getElementById("me-yubin").value;
     if (f.jusho) data[f.jusho] = document.getElementById("me-jusho").value;
+
+    if (f.password) {
+      const pw = document.getElementById("me-password").value;
+      const pwConfirm = document.getElementById("me-password-confirm").value;
+      if (pw || pwConfirm) {
+        if (pw !== pwConfirm) {
+          alert("パスワードとパスワード確認が一致しません");
+          return;
+        }
+        // 変更する場合のみ含める。空欄なら送信せず既存のパスワードを維持する
+        data[f.password] = pw;
+      }
+    }
 
     updateStatus("保存中...", "saving", true);
     try {
@@ -2230,6 +2318,9 @@
         const partnerSelect = document.getElementById("u-顧客ID");
         if (savedId) partnerSelect.value = savedId;
         updateStatus(`${name} を登録し選択しました`, "saved", false);
+      } else if (type === 'tando') {
+        updateStatus("アカウント情報を更新しました", "saved", false);
+        showView('calendar');
       } else {
         showMasterView(type);
       }
