@@ -581,7 +581,7 @@
   </div>
 
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbwnI4DBt5wk0gDAMDe0PoZmnfILCRLi54nDpyYoAosJTqqqq0rhMss7KNRABSL_go7r/exec";
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbyc0iwAx9wwaamaxGGpNEcbR3CJ-9WY06aLIGmdYYwx7ExX3X7BugbeHuSP1yG_dJOW/exec";
 
   const GOOGLE_CLIENT_ID = "154863690218-sm6g80n7kppslgt72qpu5939er0g7pfc.apps.googleusercontent.com";
   const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
@@ -638,17 +638,43 @@
     initSwipeEvents();
     appState.activeTab = null;
 
-    // ログイン画面を即座に表示しつつ、裏でスプレッドシートの読込みを開始する
+    // ログイン画面を即座に表示しつつ、裏でスプレッドシートの読込みを開始する（ログインを待たずに完了まで進む）
     showLoginModal();
 
-    updateStatus("データ同期中 (0%)", "saving", true);
     appState.dataLoadPromise = (async () => {
+      let pct = 0;
+      updateStatus(`データ同期中 (${pct}%)`, "saving", true);
+
+      // マスタデータ取得中は0%→45%まで、実際の完了を待たずになめらかに進める
+      const masterTicker = setInterval(() => {
+        if (pct < 45) {
+          pct += 3;
+          updateStatus(`データ同期中 (${pct}%)`, "saving", true);
+        }
+      }, 150);
+
       try {
         await fetchMasterData();
-        updateStatus("データ同期中 (50%)", "saving", true);
+        clearInterval(masterTicker);
+        pct = 50;
+        updateStatus(`データ同期中 (${pct}%)`, "saving", true);
+
+        // 売掛買掛データ取得中は50%→95%までなめらかに進める
+        const txTicker = setInterval(() => {
+          if (pct < 95) {
+            pct += 3;
+            updateStatus(`データ同期中 (${pct}%)`, "saving", true);
+          }
+        }, 150);
+
         await fetchAllTransactions();
-        updateStatus("データ同期中 (100%)", "saving", true);
+        clearInterval(txTicker);
+
+        const uCount = (appState.urikake || []).length;
+        const kCount = (appState.kaikake || []).length;
+        updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved", false);
       } catch(e) {
+        clearInterval(masterTicker);
         updateStatus("通信エラー", "", false);
       }
     })();
@@ -1056,11 +1082,8 @@
         localStorage.setItem("hamasada_staff_id", val);
         document.getElementById("staff-modal").style.display = "none";
 
-        updateStatus("データ読込み中...", "saving", true);
+        // データ読込みが裏で進行中ならここで完了を待つだけ（進捗表示自体は読込み処理側が自律的に管理）
         if (appState.dataLoadPromise) await appState.dataLoadPromise;
-        const uCount = (appState.urikake || []).length;
-        const kCount = (appState.kaikake || []).length;
-        updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved", false);
 
         await restoreGoogleAuth();
         renderCalendar();
@@ -1828,6 +1851,8 @@
         return n;
       });
 
+      const savedRows = []; // 保存済み行をここに集め、サーバー再取得を待たずローカルキャッシュを更新する
+
       for (let i = 0; i < currentItems.length; i++) {
         const item = currentItems[i];
         const rawAmount = Number(item.amount) || 0;
@@ -1876,15 +1901,39 @@
           if (newId) {
             sharedId = newId;
             item.id = newId;
+            formData[isKaikake ? "買掛ID" : "売掛ID"] = newId;
           }
         }
+
+        delete formData["_forceInsert"];
+        delete formData["_rowOccurrence"];
+        savedRows.push(formData);
       }
 
+      updateLocalTransactionCache(isKaikake, savedRows);
+
       updateStatus("保存完了しました", "saved", false);
-      await fetchAllTransactions();
       showView("calendar");
+
+      // サーバー側の他フィールド（生成された正式なIDの表記ゆれ等）との整合を裏で取り直す（画面遷移はブロックしない）
+      fetchAllTransactions();
     } catch(e) {
       updateStatus("通信エラーで保存できませんでした", "", false);
+    }
+  }
+
+  /**
+   * 保存直後のローカルキャッシュ更新。サーバーへの全件再取得を待たずに
+   * カレンダー表示へ即座に戻れるようにするための処理。
+   */
+  function updateLocalTransactionCache(isKaikake, savedRows) {
+    const idKey = isKaikake ? "買掛ID" : "売掛ID";
+    const savedIds = new Set(savedRows.map(r => String(r[idKey])).filter(Boolean));
+
+    if (isKaikake) {
+      appState.kaikake = (appState.kaikake || []).filter(row => !savedIds.has(String(row[idKey]))).concat(savedRows);
+    } else {
+      appState.urikake = (appState.urikake || []).filter(row => !savedIds.has(String(row[idKey]))).concat(savedRows);
     }
   }
 
