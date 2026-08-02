@@ -182,6 +182,8 @@
     .badge-h { background: #fee2e2; color: #b91c1c; border: 1.5px solid #ef4444; } /* 発 */
     .badge-u { background: #fef3c7; color: #b45309; border: 1.5px solid #f59e0b; } /* 入 */
     .badge-r { background: #ede9fe; color: #6d28d9; border: 1.5px solid #8b5cf6; } /* 請 */
+    .badge-kanryo { background: #dcfce7; color: #15803d; border: 1.5px solid #22c55e; font-weight: bold; } /* 完 */
+    .badge-gray { background: #f1f5f9; color: #94a3b8; border: 1.5px solid #cbd5e1; } /* 完了案件の過去ステータス（グレーアウト） */
 
     /* 2週表示 */
     .calendar-grid-2week {
@@ -348,6 +350,21 @@
       </div>
       <p style="font-size:0.8rem; color:#64748b; margin-bottom:10px;">表示するカレンダーにチェックを入れてください</p>
       <div id="google-cal-list" style="flex:1; overflow-y:auto;"></div>
+      <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px;">
+        <button class="btn-sm" style="background:#dc2626; width:100%; padding:12px; font-size:0.9rem;" onclick="disconnectGoogleCalendar()">🔌 Googleカレンダー連携を解除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 未完了ステータス一覧モーダル -->
+  <div class="modal-overlay" id="incomplete-list-modal" style="display: none;" onclick="closeIncompleteListModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="color:var(--primary); font-size:1.05rem;">📝 未完了ステータス一覧</h3>
+        <button class="btn-sm" style="background:#64748b;" onclick="closeIncompleteListModal()">✕ 閉じる</button>
+      </div>
+      <p style="font-size:0.8rem; color:#64748b; margin-bottom:10px;">顧客・仲卸ごとに未完了の案件をまとめています</p>
+      <div id="incomplete-list-content" style="flex:1; overflow-y:auto;"></div>
     </div>
   </div>
 
@@ -374,9 +391,12 @@
 
     <div id="view-urikake-form" style="display: none;">
       <div class="view-card">
-        <div class="tabs" style="margin-bottom: 16px;">
-          <div class="tab active" id="type-tab-urikake" onclick="switchFormType('urikake')">📈 売掛（販売）</div>
-          <div class="tab" id="type-tab-kaikake" onclick="switchFormType('kaikake')">📉 買掛（仕入）</div>
+        <div style="display:flex; gap:8px; align-items:stretch; margin-bottom:16px;">
+          <div class="tabs" style="flex:1; margin-bottom:0;">
+            <div class="tab active" id="type-tab-urikake" onclick="switchFormType('urikake')">📈 売掛（販売）</div>
+            <div class="tab" id="type-tab-kaikake" onclick="switchFormType('kaikake')">📉 買掛（仕入）</div>
+          </div>
+          <button type="button" id="complete-btn" class="btn-sm" style="background:#16a34a; padding:0 14px; font-weight:bold; white-space:nowrap;" onclick="toggleCompleteStatus()">完了</button>
         </div>
 
         <div class="form-group">
@@ -525,8 +545,8 @@
     <button class="fab" onclick="openNewRecord('urikake')">＋</button>
   </div>
 
-  <div id="fab-google-btn-group" class="fab-container-left" style="display: none;">
-    <button class="fab fab-google" onclick="openGoogleCalListModal()">📅</button>
+  <div id="fab-memo-list-group" class="fab-container-left" style="display: none;">
+    <button class="fab" style="background:#7c3aed;" onclick="openIncompleteListModal()">📝</button>
   </div>
 
   <div id="fab-back-left" class="fab-container-left" style="display: none;">
@@ -776,14 +796,14 @@
 
   function handleGoogleCalendarMenuClick() {
     if (appState.googleAuthed) {
-      disconnectGoogleCalendar();
+      openGoogleCalListModal();
     } else {
       syncGoogleCalendar();
     }
   }
 
   function disconnectGoogleCalendar() {
-    toggleMenu(false);
+    closeGoogleCalListModal();
     if (appState.googleAccessToken && typeof google !== "undefined" && google.accounts && google.accounts.oauth2) {
       try { google.accounts.oauth2.revoke(appState.googleAccessToken, () => {}); } catch(e) {}
     }
@@ -794,7 +814,6 @@
     appState.googleEventsByDate = {};
     localStorage.removeItem("hamasada_google_token");
     localStorage.removeItem("hamasada_google_token_expiry");
-    document.getElementById("fab-google-btn-group").style.display = "none";
     document.getElementById("gcal-menu-item").innerText = "📅 Googleカレンダー連携";
     updateStatus("Googleカレンダー連携を解除しました", "saved", false);
     renderCalendar();
@@ -809,9 +828,7 @@
   }
 
   async function onGoogleAuthSuccess() {
-    document.getElementById("fab-google-btn-group").style.display =
-      document.getElementById("view-calendar").style.display !== "none" ? "flex" : "none";
-    document.getElementById("gcal-menu-item").innerText = "📅 Googleカレンダー解除";
+    document.getElementById("gcal-menu-item").innerText = "📅 Googleカレンダー選択";
     updateStatus("Googleカレンダー認証が完了しました", "saved", false);
     await fetchGoogleCalendarList();
     await fetchGoogleEventsForCheckedCalendars();
@@ -826,8 +843,7 @@
       appState.googleAccessToken = token;
       appState.googleTokenExpiry = expiry;
       appState.googleAuthed = true;
-      document.getElementById("fab-google-btn-group").style.display = "flex";
-      document.getElementById("gcal-menu-item").innerText = "📅 Googleカレンダー解除";
+      document.getElementById("gcal-menu-item").innerText = "📅 Googleカレンダー選択";
       await fetchGoogleCalendarList();
       await fetchGoogleEventsForCheckedCalendars();
     }
@@ -854,7 +870,6 @@
           appState.googleAuthed = false;
           appState.googleAccessToken = null;
           localStorage.removeItem("hamasada_google_token");
-          document.getElementById("fab-google-btn-group").style.display = "none";
           document.getElementById("gcal-menu-item").innerText = "📅 Googleカレンダー連携";
         }
       }
@@ -1195,16 +1210,36 @@
     let badges = [];
 
     (appState.urikake || []).filter(u => String(u.チェック).toUpperCase() !== 'X').forEach(u => {
-      if (normalizeDate(u.依頼日) === dateStr) badges.push('<div class="status-badge badge-i">依</div>');
-      if (normalizeDate(u.見積日) === dateStr) badges.push('<div class="status-badge badge-m">見</div>');
-      if (normalizeDate(u.納品日) === dateStr) badges.push('<div class="status-badge badge-n">納</div>');
-      if (normalizeDate(u.請求日) === dateStr) badges.push('<div class="status-badge badge-r">請</div>');
+      const isComplete = u["完了フラグ"] === "TRUE";
+      const pushBadge = (matched, abbr, cls) => {
+        if (!matched) return;
+        if (isComplete) {
+          badges.push(`<div class="status-badge badge-gray">${abbr}</div>`);
+          badges.push('<div class="status-badge badge-kanryo">完</div>');
+        } else {
+          badges.push(`<div class="status-badge ${cls}">${abbr}</div>`);
+        }
+      };
+      pushBadge(normalizeDate(u.依頼日) === dateStr, '依', 'badge-i');
+      pushBadge(normalizeDate(u.見積日) === dateStr, '見', 'badge-m');
+      pushBadge(normalizeDate(u.納品日) === dateStr, '納', 'badge-n');
+      pushBadge(normalizeDate(u.請求日) === dateStr, '請', 'badge-r');
     });
 
     (appState.kaikake || []).filter(k => String(k.チェック).toUpperCase() !== 'X').forEach(k => {
-      if (normalizeDate(k.発注日 || k.依頼日) === dateStr) badges.push('<div class="status-badge badge-h">発</div>');
-      if (normalizeDate(k.入荷日 || k.納品日) === dateStr) badges.push('<div class="status-badge badge-u">入</div>');
-      if (normalizeDate(k.請求日) === dateStr) badges.push('<div class="status-badge badge-r">請</div>');
+      const isComplete = k["完了フラグ"] === "TRUE";
+      const pushBadge = (matched, abbr, cls) => {
+        if (!matched) return;
+        if (isComplete) {
+          badges.push(`<div class="status-badge badge-gray">${abbr}</div>`);
+          badges.push('<div class="status-badge badge-kanryo">完</div>');
+        } else {
+          badges.push(`<div class="status-badge ${cls}">${abbr}</div>`);
+        }
+      };
+      pushBadge(normalizeDate(k.発注日 || k.依頼日) === dateStr, '発', 'badge-h');
+      pushBadge(normalizeDate(k.入荷日 || k.納品日) === dateStr, '入', 'badge-u');
+      pushBadge(normalizeDate(k.請求日) === dateStr, '請', 'badge-r');
     });
 
     return [...new Set(badges)];
@@ -1280,7 +1315,8 @@
     const isKaikake = type === 'kaikake';
     const rep = rows[0];
     const statusFields = isKaikake ? STATUS_FIELDS_KAIKAKE : STATUS_FIELDS_URIKAKE;
-    const statusLabel = getMatchingStatusLabel(rep, dateStr, statusFields);
+    const isComplete = rep["完了フラグ"] === "TRUE";
+    const statusLabel = isComplete ? "完了" : getMatchingStatusLabel(rep, dateStr, statusFields);
     const title = rep.依頼件名 || rep.発注件名 || rep.件名 || '（案件）';
 
     const staffId = rep.担当ID || '';
@@ -1320,6 +1356,94 @@
         <div style="font-size:1.2rem; flex-shrink:0; margin-left:8px;">✏️</div>
       </div>
     `;
+  }
+
+  /* --- 未完了ステータス一覧（顧客ごと） --- */
+  function openIncompleteListModal() {
+    toggleMenu(false);
+    renderIncompleteList();
+    document.getElementById("incomplete-list-modal").style.display = "flex";
+  }
+
+  function closeIncompleteListModal(e) {
+    if (!e || e.target.id === 'incomplete-list-modal' || e.type === 'click') {
+      document.getElementById("incomplete-list-modal").style.display = "none";
+    }
+  }
+
+  function renderIncompleteList() {
+    const container = document.getElementById("incomplete-list-content");
+    container.innerHTML = "";
+
+    const urikakeGrouped = groupRecordsByCaseId(
+      (appState.urikake || []).filter(u => String(u.チェック).toUpperCase() !== 'X' && u["完了フラグ"] !== "TRUE"),
+      '売掛ID'
+    );
+    const kaikakeGrouped = groupRecordsByCaseId(
+      (appState.kaikake || []).filter(k => String(k.チェック).toUpperCase() !== 'X' && k["完了フラグ"] !== "TRUE"),
+      '買掛ID'
+    );
+
+    const byCustomer = {};
+
+    urikakeGrouped.order.forEach(id => {
+      const rows = urikakeGrouped.groups[id];
+      const rep = rows[0];
+      const partnerId = rep.顧客ID || '';
+      const partner = (appState.kokyaku || []).find(k => String(k.顧客ID || k.ID) === String(partnerId)) || {};
+      const partnerName = partner.顧客名 || '顧客未設定';
+      const key = 'urikake:' + partnerId;
+      if (!byCustomer[key]) byCustomer[key] = { partnerName, type: 'urikake', items: [] };
+      byCustomer[key].items.push({ groupId: id, rep });
+    });
+
+    kaikakeGrouped.order.forEach(id => {
+      const rows = kaikakeGrouped.groups[id];
+      const rep = rows[0];
+      const partnerId = rep.仲卸ID || rep.顧客ID || '';
+      const partner = (appState.nakaoroshi || []).find(n => String(n.仲卸ID || n.ID) === String(partnerId)) || {};
+      const partnerName = partner.仲卸名 || '仲卸未設定';
+      const key = 'kaikake:' + partnerId;
+      if (!byCustomer[key]) byCustomer[key] = { partnerName, type: 'kaikake', items: [] };
+      byCustomer[key].items.push({ groupId: id, rep });
+    });
+
+    const keys = Object.keys(byCustomer);
+    if (keys.length === 0) {
+      container.innerHTML = `<p style="font-size:0.85rem; color:#64748b; padding:20px; text-align:center;">未完了の案件はありません</p>`;
+      return;
+    }
+
+    keys.sort((a, b) => byCustomer[a].partnerName.localeCompare(byCustomer[b].partnerName, 'ja'));
+
+    keys.forEach(key => {
+      const group = byCustomer[key];
+      const statusFields = group.type === 'kaikake' ? STATUS_FIELDS_KAIKAKE : STATUS_FIELDS_URIKAKE;
+
+      let html = `<div style="margin-bottom:14px;">
+        <div style="font-weight:bold; color:var(--primary); font-size:0.9rem; margin-bottom:6px; padding-bottom:4px; border-bottom:1px solid var(--border);">
+          ${group.type === 'kaikake' ? '🏢' : '👥'} ${group.partnerName}
+        </div>`;
+
+      group.items.forEach(({ groupId, rep }) => {
+        const title = rep.依頼件名 || rep.発注件名 || rep.件名 || '（案件）';
+        let currentStatus = statusFields[0].label;
+        statusFields.forEach(f => { if (rep[f.field]) currentStatus = f.label; });
+
+        html += `
+          <div class="list-item" onclick="closeIncompleteListModal(); openEditForm('${groupId}', '${group.type}', '${currentStatus}')">
+            <div>
+              <div class="title">${title}</div>
+              <div class="sub">現在のステータス: ${currentStatus}</div>
+            </div>
+            <div style="font-size:1.2rem;">✏️</div>
+          </div>
+        `;
+      });
+
+      html += `</div>`;
+      container.innerHTML += html;
+    });
   }
 
   function onDateClick(dateStr) {
@@ -1672,6 +1796,7 @@
           "販売金額": signedAmount,
           "仕入金額": signedAmount,
           "チェック": item.check || "",
+          "完了フラグ": currentFormData["完了フラグ"] || "",
           "依頼日": currentFormData["依頼日"] || "",
           "発注日": currentFormData["発注日"] || currentFormData["依頼日"] || "",
           "見積日": currentFormData["見積日"] || "",
@@ -1735,6 +1860,34 @@
     currentItems.forEach(item => { item.check = 'X'; });
 
     closeCancelModal();
+    await saveFormData();
+  }
+
+  /* --- 完了ステータス --- */
+  function updateCompleteButtonUI() {
+    const btn = document.getElementById("complete-btn");
+    if (!btn) return;
+    const isComplete = currentFormData["完了フラグ"] === "TRUE";
+    if (!appState.isEditMode) {
+      btn.innerText = "完了";
+      btn.style.background = "#94a3b8";
+      return;
+    }
+    btn.innerText = isComplete ? "✅ 完了済" : "完了";
+    btn.style.background = isComplete ? "#64748b" : "#16a34a";
+  }
+
+  async function toggleCompleteStatus() {
+    if (!appState.isEditMode) {
+      alert("先に保存してから完了操作を行ってください");
+      return;
+    }
+    const isCurrentlyComplete = currentFormData["完了フラグ"] === "TRUE";
+    const confirmMsg = isCurrentlyComplete ? "未完了に戻します。よろしいですか？" : "この案件を完了にします。よろしいですか？";
+    if (!confirm(confirmMsg)) return;
+
+    currentFormData["完了フラグ"] = isCurrentlyComplete ? "" : "TRUE";
+    updateCompleteButtonUI();
     await saveFormData();
   }
 
@@ -1805,7 +1958,7 @@
     document.getElementById("fab-form-group").style.display = viewName === 'urikake' ? 'flex' : 'none';
     document.getElementById("fab-master-list-group").style.display = isMasterListWithFab ? 'flex' : 'none';
     document.getElementById("fab-master-group").style.display = viewName === 'masterEdit' ? 'flex' : 'none';
-    document.getElementById("fab-google-btn-group").style.display = (viewName === 'calendar' && appState.googleAuthed) ? 'flex' : 'none';
+    document.getElementById("fab-memo-list-group").style.display = viewName === 'calendar' ? 'flex' : 'none';
 
     const showBackLeft = viewName === 'urikake' || viewName === 'googleEvent' || viewName === 'masterEdit' || isMasterListWithFab;
     document.getElementById("fab-back-left").style.display = showBackLeft ? 'flex' : 'none';
@@ -1834,7 +1987,10 @@
     switchFormType(type, true);
 
     const initDate = targetDate || getTodayString();
-    currentFormData = { "依頼日": initDate, "発注日": initDate };
+    currentFormData = {
+      "依頼日": initDate, "見積日": initDate, "納品日": initDate, "請求日": initDate, "入金日": initDate,
+      "発注日": initDate, "市場開場日": initDate, "入荷日": initDate, "支払日": initDate
+    };
     document.getElementById("u-依頼件名").value = "";
     document.getElementById("u-担当ID").value = appState.selectedStaffId;
 
@@ -1842,6 +1998,7 @@
     addItemRow();
 
     document.getElementById("fab-delete-btn").style.display = "none";
+    updateCompleteButtonUI();
     showView('urikake');
   }
 
@@ -1889,6 +2046,7 @@
     const defaultTab = (initialTab && validTabs.includes(initialTab)) ? initialTab : (type === 'kaikake' ? '発注' : '依頼');
     switchDateTab(defaultTab);
     document.getElementById("fab-delete-btn").style.display = "flex";
+    updateCompleteButtonUI();
     showView('urikake');
   }
 
