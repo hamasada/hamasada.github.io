@@ -181,6 +181,7 @@
     .badge-n { background: #ffedd5; color: #c2410c; border: 1.5px solid #f97316; } /* 納 */
     .badge-h { background: #fee2e2; color: #b91c1c; border: 1.5px solid #ef4444; } /* 発 */
     .badge-u { background: #fef3c7; color: #b45309; border: 1.5px solid #f59e0b; } /* 入 */
+    .badge-r { background: #ede9fe; color: #6d28d9; border: 1.5px solid #8b5cf6; } /* 請 */
 
     /* 2週表示 */
     .calendar-grid-2week {
@@ -386,8 +387,8 @@
         <div class="form-group">
           <label id="partner-label">顧客・担当</label>
           <div style="display: flex; gap: 8px;">
-            <select class="form-control" id="u-顧客ID" onchange="onPartnerSelectChanged()"><option value="">選択...</option></select>
-            <select class="form-control" id="u-担当ID" onchange="onStaffChangedInForm()"><option value="">担当選択</option></select>
+            <select class="form-control" id="u-顧客ID" onchange="onPartnerSelectChanged()" style="flex: 2; min-width: 0;"><option value="">選択...</option></select>
+            <select class="form-control" id="u-担当ID" onchange="onStaffChangedInForm()" style="flex: 1; min-width: 0;"><option value="">担当選択</option></select>
           </div>
         </div>
 
@@ -548,7 +549,7 @@
   </div>
 
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbzDcXxAMTqRk9ZjiAFAA1hdgM2kj4ZCqV0YJHBbec-3wJQyIohekHQOSd58-ZgENL6K/exec";
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbwHOKkFXgsDl4Yi3UAwRS7GD8a-LeFSzLuXe4KFpsxXBbwrVEh_ET557UnBvDSwUqmw/exec";
 
   const GOOGLE_CLIENT_ID = "154863690218-sm6g80n7kppslgt72qpu5939er0g7pfc.apps.googleusercontent.com";
   const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
@@ -1197,11 +1198,13 @@
       if (normalizeDate(u.依頼日) === dateStr) badges.push('<div class="status-badge badge-i">依</div>');
       if (normalizeDate(u.見積日) === dateStr) badges.push('<div class="status-badge badge-m">見</div>');
       if (normalizeDate(u.納品日) === dateStr) badges.push('<div class="status-badge badge-n">納</div>');
+      if (normalizeDate(u.請求日) === dateStr) badges.push('<div class="status-badge badge-r">請</div>');
     });
 
     (appState.kaikake || []).filter(k => String(k.チェック).toUpperCase() !== 'X').forEach(k => {
       if (normalizeDate(k.発注日 || k.依頼日) === dateStr) badges.push('<div class="status-badge badge-h">発</div>');
       if (normalizeDate(k.入荷日 || k.納品日) === dateStr) badges.push('<div class="status-badge badge-u">入</div>');
+      if (normalizeDate(k.請求日) === dateStr) badges.push('<div class="status-badge badge-r">請</div>');
     });
 
     return [...new Set(badges)];
@@ -1257,7 +1260,7 @@
   function getMatchingStatusLabel(rep, dateStr, fieldsList) {
     const matched = fieldsList.filter(f => normalizeDate(rep[f.field]) === dateStr);
     if (matched.length === 0) return fieldsList[0].label;
-    return matched.map(m => m.label).join('/');
+    return matched[matched.length - 1].label;
   }
 
   function buildNameDisplay(names, maxLen = 18) {
@@ -1305,7 +1308,7 @@
     const badgeBg = isKaikake ? '#fee2e2' : '#dbeafe';
 
     return `
-      <div class="list-item" style="border-left: 4px solid ${accentColor}; align-items:flex-start;" onclick="closeDetailModal(); openEditForm('${groupId}', '${type}')">
+      <div class="list-item" style="border-left: 4px solid ${accentColor}; align-items:flex-start;" onclick="closeDetailModal(); openEditForm('${groupId}', '${type}', '${statusLabel}')">
         <div style="flex:1; min-width:0;">
           <div class="title">
             <span style="background:${badgeBg}; color:${accentColor}; font-size:0.75rem; padding:2px 6px; border-radius:4px; margin-right:6px; flex-shrink:0;">${statusLabel}</span>
@@ -1636,12 +1639,28 @@
     updateStatus("データ保存中...", "saving", true);
 
     try {
-      for (let item of currentItems) {
+      // 明細全体で共有するID（既存の明細があればそのIDを使用し、なければ最初の保存で採番されたIDを以降の明細にも使い回す）
+      let sharedId = (currentItems.find(item => item.id) || {}).id || "";
+
+      // 同じIDを持つ既存行が複数ある場合に備え、何番目の出現かを事前計算しておく（更新時の行特定に使用）
+      const occurrenceCounter = {};
+      const rowOccurrences = currentItems.map(item => {
+        if (!item.id) return -1;
+        const n = occurrenceCounter[item.id] || 0;
+        occurrenceCounter[item.id] = n + 1;
+        return n;
+      });
+
+      for (let i = 0; i < currentItems.length; i++) {
+        const item = currentItems[i];
         const rawAmount = Number(item.amount) || 0;
         const signedAmount = item.isDiscount ? -Math.abs(rawAmount) : rawAmount;
+        const isNewItem = !item.id;
         const formData = {
-          "売掛ID": isKaikake ? "" : item.id,
-          "買掛ID": isKaikake ? item.id : "",
+          "売掛ID": isKaikake ? "" : (item.id || sharedId),
+          "買掛ID": isKaikake ? (item.id || sharedId) : "",
+          "_forceInsert": isNewItem,
+          "_rowOccurrence": rowOccurrences[i],
           "依頼件名": document.getElementById("u-依頼件名").value,
           "件名": document.getElementById("u-依頼件名").value,
           "顧客ID": isKaikake ? "" : document.getElementById("u-顧客ID").value,
@@ -1668,10 +1687,19 @@
           "キャンセル内容": currentFormData["キャンセル理由"] || currentFormData["キャンセル内容"] || ""
         };
 
-        await fetch(GAS_URL, {
+        const res = await fetch(GAS_URL, {
           method: "POST",
           body: JSON.stringify({ action: action, data: formData })
         });
+        const json = await res.json();
+
+        if (isNewItem && json.data) {
+          const newId = isKaikake ? json.data["買掛ID"] : json.data["売掛ID"];
+          if (newId) {
+            sharedId = newId;
+            item.id = newId;
+          }
+        }
       }
 
       updateStatus("保存完了しました", "saved", false);
@@ -1817,7 +1845,7 @@
     showView('urikake');
   }
 
-  function openEditForm(id, type = 'urikake') {
+  function openEditForm(id, type = 'urikake', initialTab = null) {
     appState.currentFormType = type;
     appState.isEditMode = true;
     switchFormType(type, false);
@@ -1834,8 +1862,7 @@
     document.getElementById("u-担当ID").value = firstItem.担当ID || appState.selectedStaffId;
 
     const relatedItems = dataset.filter(d => 
-      (d.依頼件名 && d.依頼件名 === firstItem.依頼件名) || 
-      String(d[idKey] || d.ID) === String(id)
+      String(d[idKey] || d.ID || Object.values(d)[0]).trim() === String(id).trim()
     );
 
     currentItems = relatedItems.map(item => {
@@ -1858,7 +1885,8 @@
     if (currentItems.length === 0) addItemRow();
 
     renderItemRows();
-    const defaultTab = type === 'kaikake' ? '発注' : '依頼';
+    const validTabs = type === 'kaikake' ? ['発注', '入荷', '請求', '支払'] : ['依頼', '見積', '納品', '請求', '入金'];
+    const defaultTab = (initialTab && validTabs.includes(initialTab)) ? initialTab : (type === 'kaikake' ? '発注' : '依頼');
     switchDateTab(defaultTab);
     document.getElementById("fab-delete-btn").style.display = "flex";
     showView('urikake');
