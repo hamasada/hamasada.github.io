@@ -1984,13 +1984,15 @@
   function openNewRecord(type = 'urikake', targetDate = null) {
     appState.currentFormType = type;
     appState.isEditMode = false;
-    switchFormType(type, true);
 
     const initDate = targetDate || getTodayString();
     currentFormData = {
       "依頼日": initDate, "見積日": initDate, "納品日": initDate, "請求日": initDate, "入金日": initDate,
       "発注日": initDate, "市場開場日": initDate, "入荷日": initDate, "支払日": initDate
     };
+
+    switchFormType(type, true);
+
     document.getElementById("u-依頼件名").value = "";
     document.getElementById("u-担当ID").value = appState.selectedStaffId;
 
