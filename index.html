@@ -244,11 +244,17 @@
     }
     .fab-google { font-size: 1.6rem; }
 
-    /* Googleカレンダー予定タイトル (カレンダーマス先頭行) */
+    /* Googleカレンダー予定タイトル (カレンダーマス先頭行・月表示) */
     .gcal-event-title {
       font-size: 0.6rem; color: #1a73e8; background: #e8f0fe; border-radius: 2px; padding: 1px 2px;
       white-space: nowrap; overflow: hidden; line-height: 1.6; height: 1.6em; box-sizing: content-box;
       margin-top: 1px; width: 100%; flex-shrink: 0;
+    }
+    /* Googleカレンダー予定タイトル (2週表示用・時刻付き・大きめ文字) */
+    .gcal-event-title-lg {
+      font-size: 0.78rem; font-weight: 600; color: #1a73e8; background: #e8f0fe; border-radius: 3px; padding: 1px 4px;
+      white-space: nowrap; overflow: hidden; line-height: 1.5; height: 1.5em; box-sizing: content-box;
+      margin-top: 2px; width: 100%; flex-shrink: 0;
     }
   </style>
 </head>
@@ -972,10 +978,32 @@
     }
   }
 
-  function getGCalTitleForDate(dateStr) {
+  function formatEventTimeShort(startObj) {
+    if (!startObj || !startObj.dateTime) return "";
+    const d = new Date(startObj.dateTime);
+    const hours = d.getHours();
+    const minutes = d.getMinutes();
+    const period = hours < 12 ? "午前" : "午後";
+    const h12 = hours % 12 === 0 ? 12 : hours % 12;
+    return minutes === 0 ? `${period}${h12}時` : `${period}${h12}:${String(minutes).padStart(2, '0')}`;
+  }
+
+  /* 指定日のGoogleカレンダー予定を最大2件分の表示用文字列配列として返す（includeTime=trueで時刻を先頭に付与） */
+  function getGCalEventLines(dateStr, includeTime) {
     const events = (appState.googleEventsByDate || {})[dateStr];
-    if (!events || events.length === 0) return "";
-    return events.length > 1 ? `${events[0].title} 他${events.length - 1}件` : events[0].title;
+    if (!events || events.length === 0) return [];
+    const shown = events.slice(0, 2);
+    const lines = shown.map(ev => {
+      if (includeTime) {
+        const timeStr = formatEventTimeShort(ev.start);
+        return timeStr ? `${timeStr} ${ev.title}` : ev.title;
+      }
+      return ev.title;
+    });
+    if (events.length > 2) {
+      lines[lines.length - 1] += ` 他${events.length - 2}件`;
+    }
+    return lines;
   }
 
   function openGoogleCalListModal() {
@@ -1185,7 +1213,7 @@
 
       const isToday = dateStr === getTodayString();
       const badges = getStatusBadgesForDate(dateStr);
-      const gcalTitle = getGCalTitleForDate(dateStr);
+      const gcalLines = getGCalEventLines(dateStr, false);
 
       grid.innerHTML += `
         <div class="cal-day ${bgClass} ${isToday ? 'today' : ''}" onclick="onDateClick('${dateStr}')">
@@ -1194,7 +1222,7 @@
             <span class="rokuyou">${rokuyou}</span>
           </div>
           ${holidayName ? `<div class="holiday-tag">${holidayName}</div>` : ''}
-          ${gcalTitle ? `<div class="gcal-event-title">${gcalTitle}</div>` : ''}
+          ${gcalLines.map(line => `<div class="gcal-event-title">${line}</div>`).join('')}
           <div class="cal-grid-4">${badges.slice(0, 4).join('')}</div>
         </div>
       `;
@@ -1264,7 +1292,7 @@
       : `${d.getMonth() + 1}/${d.getDate()}`;
     const isToday = dateStr === getTodayString();
     const badges = getStatusBadgesForDate(dateStr);
-    const gcalTitle = getGCalTitleForDate(dateStr);
+    const gcalLines = getGCalEventLines(dateStr, true);
 
     const cell = document.createElement("div");
     cell.className = `cal-2week-day ${bgClass} ${isToday ? 'today' : ''}`;
@@ -1274,7 +1302,7 @@
         <span class="day-num">${displayLabel}</span>
         <span class="rokuyou">${rokuyou}</span>
       </div>
-      ${gcalTitle ? `<div class="gcal-event-title">${gcalTitle}</div>` : ''}
+      ${gcalLines.map(line => `<div class="gcal-event-title-lg">${line}</div>`).join('')}
       <div class="cal-grid-horizontal">${badges.slice(0, 4).join('')}</div>
     `;
     return cell;
