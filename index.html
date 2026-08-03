@@ -567,7 +567,7 @@
   </div>
 
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbykTAmdUGU7UOoA1hqqzq6iqECPb_GpTttl3RHuEDbNyVSCMEUTTapyfgtzIAm0p2vH/exec";
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbyc0iwAx9wwaamaxGGpNEcbR3CJ-9WY06aLIGmdYYwx7ExX3X7BugbeHuSP1yG_dJOW/exec";
 
   const GOOGLE_CLIENT_ID = "154863690218-sm6g80n7kppslgt72qpu5939er0g7pfc.apps.googleusercontent.com";
   const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
@@ -983,9 +983,7 @@
     const d = new Date(startObj.dateTime);
     const hours = d.getHours();
     const minutes = d.getMinutes();
-    const period = hours < 12 ? "午前" : "午後";
-    const h12 = hours % 12 === 0 ? 12 : hours % 12;
-    return minutes === 0 ? `${period}${h12}時` : `${period}${h12}:${String(minutes).padStart(2, '0')}`;
+    return minutes === 0 ? `${hours}時` : `${hours}:${String(minutes).padStart(2, '0')}`;
   }
 
   /* 指定日のGoogleカレンダー予定を最大2件分の表示用文字列配列として返す（includeTime=trueで時刻を先頭に付与） */
@@ -1440,7 +1438,7 @@
     const nameDisplay = buildNameDisplay(names) || '品名未設定';
 
     let total = 0;
-    rows.forEach(r => { total += Number(r.販売金額 || r.仕入金額 || 0); });
+    rows.forEach(r => { total += Number(r.販売金額 || r.仕入価格 || 0); });
 
     const accentColor = isKaikake ? '#dc2626' : '#2563eb';
     const badgeBg = isKaikake ? '#fee2e2' : '#dbeafe';
@@ -1904,7 +1902,7 @@
           "産地": item.sanchi,
           "単価": item.isDiscount ? "" : item.price,
           "販売金額": signedAmount,
-          "仕入金額": signedAmount,
+          "仕入価格": signedAmount,
           "チェック": item.check || "",
           "完了フラグ": currentFormData["完了フラグ"] || "",
           "依頼日": currentFormData["依頼日"] || "",
@@ -2196,7 +2194,7 @@
     );
 
     currentItems = relatedItems.map(item => {
-      const rawAmt = item.販売金額 || item.仕入金額 || "";
+      const rawAmt = item.販売金額 || item.仕入価格 || "";
       const numAmt = Number(rawAmt);
       const isDiscount = rawAmt !== "" && !isNaN(numAmt) && numAmt < 0;
       return {
