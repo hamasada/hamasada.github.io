@@ -43,51 +43,33 @@
     .btn-sm { background: rgba(255,255,255,0.2); color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; }
     .menu-btn { font-size: 1.4rem; background: none; border: none; color: white; cursor: pointer; }
 
-    #status-bar {
-      background: #e2e8f0; text-align: center; font-size: 0.8rem;
-      color: #475569; font-weight: bold; height: 24px; line-height: 24px; flex-shrink: 0;
-    }
-    #status-bar.saving { background: #fef08a; color: #854d0e; }
-    #status-bar.saved { background: #bbf7d0; color: #166534; }
-
-    /* 中央ローディングモーダル (背景グレースケール & 操作遮断) */
-    .loading-overlay {
+    /* ヘッダー下に一時的に現れるトースト通知（帯状の行を常時占有しない） */
+    #status-toast {
       position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: grayscale(100%) blur(2px);
-      -webkit-backdrop-filter: grayscale(100%) blur(2px);
-      z-index: 1000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      pointer-events: auto;
-    }
-    .loading-overlay.active { display: flex; }
-    .loading-card {
-      background: white;
-      padding: 24px 36px;
-      border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-      text-align: center;
+      top: 48px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-12px);
+      max-width: 94%;
+      padding: 8px 18px;
+      border-radius: 0 0 10px 10px;
+      font-size: 0.8rem;
       font-weight: bold;
-      font-size: 1.05rem;
-      color: var(--text);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
-      min-width: 220px;
+      color: #475569;
+      background: #e2e8f0;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      z-index: 130;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .spinner {
-      width: 36px;
-      height: 36px;
-      border: 4px solid #e2e8f0;
-      border-top-color: var(--primary-light);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    #status-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #status-toast.saving { background: #fef08a; color: #854d0e; }
+    #status-toast.saved { background: #bbf7d0; color: #166534; }
+    #status-toast.errored { background: #fecaca; color: #991b1b; }
 
     .drawer {
       position: fixed; top: 0; right: -280px; width: 280px; height: 100%;
@@ -225,6 +207,11 @@
       border-top-left-radius: 16px; border-top-right-radius: 16px; z-index: 300; display: none; box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
     }
     .numpad-overlay.open { display: block; }
+    #numpad-preview {
+      text-align: center; font-size: 1.4rem; font-weight: bold; color: var(--primary);
+      background: white; border-radius: 8px; padding: 10px; margin-bottom: 10px;
+      box-shadow: 0 2px 0 #94a3b8; max-width: 400px; margin-left: auto; margin-right: auto;
+    }
     .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 400px; margin: 0 auto; }
     .np-btn { background: white; border: none; padding: 14px; font-size: 1.3rem; font-weight: bold; border-radius: 8px; box-shadow: 0 2px 0 #94a3b8; cursor: pointer; }
     .np-btn-action { background: var(--primary-light); color: white; box-shadow: 0 2px 0 #1d4ed8; }
@@ -275,15 +262,7 @@
     </div>
   </header>
 
-  <div id="status-bar">準備完了</div>
-
-  <!-- 中央ローディングオーバーレイ -->
-  <div class="loading-overlay" id="loading-overlay">
-    <div class="loading-card">
-      <div class="spinner"></div>
-      <div id="loading-msg-text">データ同期中...</div>
-    </div>
-  </div>
+  <div id="status-toast"></div>
 
   <!-- ログインモーダル（毎回起動時に表示） -->
   <div class="modal-overlay" id="staff-modal" style="display: none;">
@@ -293,7 +272,7 @@
       <select class="form-control" id="modal-staff-select" style="margin-bottom: 12px;">
         <option value="">担当者を選択...</option>
       </select>
-      <input type="password" class="form-control" id="login-password-input" placeholder="パスワード" style="margin-bottom: 8px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); confirmStaffSelection();}">
+      <input type="password" class="form-control" id="login-password-input" name="hamasada-staff-pw-no-save" placeholder="パスワード" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" style="margin-bottom: 8px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); confirmStaffSelection();}">
       <p id="login-error-msg" style="color:#dc2626; font-size:0.8rem; margin-bottom:8px; display:none;">担当者またはパスワードが正しくありません</p>
       <button class="btn-sm" id="login-btn" style="background:#16a34a; width:100%; padding:12px; font-size:1rem; margin-top:8px;" onclick="confirmStaffSelection()">ログイン</button>
     </div>
@@ -537,6 +516,7 @@
   </div>
 
   <div class="numpad-overlay" id="numpad">
+    <div id="numpad-preview">¥0</div>
     <div class="numpad-grid">
       <button class="np-btn" onclick="npInput('7')">7</button>
       <button class="np-btn" onclick="npInput('8')">8</button>
@@ -608,7 +588,8 @@
     googleEventsByDate: {},
     loadedStart: null,
     loadedEnd: null,
-    dataLoadPromise: null
+    dataLoadPromise: null,
+    numpadJustOpened: false
   };
 
   let googleTokenClient = null;
@@ -625,6 +606,19 @@
       else if (doc.msRequestFullscreen) { doc.msRequestFullscreen(); }
     }
   }
+
+  // フルスクリーン切替やモバイルのアドレスバー表示/非表示でビューポート高さが変化した際、
+  // 下部が見切れることがあるため、実際のwindow.innerHeightに明示的に同期する
+  function syncViewportHeight() {
+    const h = window.innerHeight + "px";
+    document.documentElement.style.height = h;
+    document.body.style.height = h;
+  }
+  window.addEventListener("resize", syncViewportHeight);
+  window.addEventListener("orientationchange", () => setTimeout(syncViewportHeight, 100));
+  document.addEventListener("fullscreenchange", () => setTimeout(syncViewportHeight, 100));
+  document.addEventListener("webkitfullscreenchange", () => setTimeout(syncViewportHeight, 100));
+  syncViewportHeight();
 
   const initFullscreenTrigger = () => {
     enableFullScreen();
@@ -675,7 +669,7 @@
         updateStatus(`同期完了 (売掛:${uCount}件 / 買掛:${kCount}件)`, "saved", false);
       } catch(e) {
         clearInterval(masterTicker);
-        updateStatus("通信エラー", "", false);
+        updateStatus("通信エラー", "errored", false);
       }
     })();
   };
@@ -741,25 +735,29 @@
   }
 
   /* --- 中央表示＆背景遮断対応のステータス/ローディング制御 --- */
-  function showLoading(msg = "データ同期中...") {
-    document.getElementById("loading-msg-text").innerText = msg;
-    document.getElementById("loading-overlay").classList.add("active");
-  }
-
-  function hideLoading() {
-    document.getElementById("loading-overlay").classList.remove("active");
-  }
+  let statusToastTimer = null;
 
   function updateStatus(msg, className, isLoading = false) {
-    const bar = document.getElementById("status-bar");
-    bar.innerText = msg;
-    bar.className = className;
-
-    if (isLoading) {
-      showLoading(msg);
-    } else {
-      hideLoading();
+    const toast = document.getElementById("status-toast");
+    if (statusToastTimer) {
+      clearTimeout(statusToastTimer);
+      statusToastTimer = null;
     }
+
+    if (!msg) {
+      toast.classList.remove("show");
+      return;
+    }
+
+    toast.innerText = msg;
+    toast.className = "show" + (className ? " " + className : "");
+
+    if (!isLoading) {
+      statusToastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2800);
+    }
+    // isLoading=true の間は次のupdateStatus呼び出しがあるまで表示し続ける（自動では消さない）
   }
 
   /* 2週表示の基準範囲（前週：左, 今週：右）を返す */
@@ -788,10 +786,10 @@
         appState.suisan = json.data.suisan || [];
         populateDropdowns();
       } else {
-        updateStatus("⚠️ マスタデータの取得に失敗しました（GASの再デプロイが必要な可能性があります）", "", false);
+        updateStatus("⚠️ マスタデータの取得に失敗しました（GASの再デプロイが必要な可能性があります）", "errored", false);
       }
     } catch(e) {
-      updateStatus("マスタデータの取得に失敗しました", "", false);
+      updateStatus("マスタデータの取得に失敗しました", "errored", false);
     }
   }
 
@@ -807,10 +805,10 @@
         appState.urikake = json.data.urikake || [];
         appState.kaikake = json.data.kaikake || [];
       } else {
-        updateStatus("⚠️ 売掛買掛データの取得に失敗しました（GASの再デプロイが必要な可能性があります）", "", false);
+        updateStatus("⚠️ 売掛買掛データの取得に失敗しました（GASの再デプロイが必要な可能性があります）", "errored", false);
       }
     } catch(e) {
-      updateStatus("売掛買掛データの取得に失敗しました", "", false);
+      updateStatus("売掛買掛データの取得に失敗しました", "errored", false);
     }
   }
 
@@ -826,7 +824,7 @@
       scope: GOOGLE_CALENDAR_SCOPE,
       callback: async (resp) => {
         if (resp.error) {
-          updateStatus("Google認証がキャンセルまたは失敗しました", "", false);
+          updateStatus("Google認証がキャンセルまたは失敗しました", "errored", false);
           return;
         }
         appState.googleAccessToken = resp.access_token;
@@ -920,7 +918,7 @@
         }
       }
     } catch(e) {
-      updateStatus("Googleカレンダー一覧の取得に失敗しました", "", false);
+      updateStatus("Googleカレンダー一覧の取得に失敗しました", "errored", false);
     }
   }
 
@@ -1772,12 +1770,18 @@
   function populateItemDropdown(index) {
     const sel = document.getElementById(`item-sel-${index}`);
     if (!sel) return;
-    sel.innerHTML = `<option value="">品名選択...</option>`;
     const item = currentItems[index];
     const rawList = item.category === '青果' ? appState.seika : appState.suisan;
-    const filtered = rawList.filter(i => (i.分類 || "") === item.bunrui);
+    const targetBunrui = String(item.bunrui || "").trim();
+    const filtered = rawList.filter(i => String(i.分類 || "").trim() === targetBunrui);
     const names = [...new Set(filtered.map(i => i.品名 || i.名 || "").filter(Boolean))];
     names.sort((a, b) => a.localeCompare(b, 'ja'));
+
+    if (names.length === 0) {
+      sel.innerHTML = `<option value="">（「${targetBunrui}」に該当するマスタデータがありません）</option>`;
+      return;
+    }
+    sel.innerHTML = `<option value="">品名選択...</option>`;
     names.forEach(n => {
       sel.innerHTML += `<option value="${n}">${n}</option>`;
     });
@@ -1918,7 +1922,7 @@
       // サーバー側の他フィールド（生成された正式なIDの表記ゆれ等）との整合を裏で取り直す（画面遷移はブロックしない）
       fetchAllTransactions();
     } catch(e) {
-      updateStatus("通信エラーで保存できませんでした", "", false);
+      updateStatus("通信エラーで保存できませんでした", "errored", false);
     }
   }
 
@@ -2022,18 +2026,38 @@
     currentFormData[memoKey] = document.getElementById("u-memo-input").value;
   }
 
+  function updateNumpadPreview() {
+    const preview = document.getElementById("numpad-preview");
+    if (appState.currentNumTargetIndex === null || !preview) return;
+    const idx = appState.currentNumTargetIndex;
+    const f = appState.currentNumTargetField;
+    const item = currentItems[idx];
+    if (!item) return;
+    const label = f === 'price' ? '単価' : '金額';
+    const num = Number(item[f]) || 0;
+    preview.innerText = `${label}: ¥${num.toLocaleString()}`;
+  }
+
   function openNumpad(itemIndex, field) {
     appState.currentNumTargetIndex = itemIndex;
     appState.currentNumTargetField = field;
     document.getElementById("numpad").classList.add("open");
+    appState.numpadJustOpened = true;
+    setTimeout(() => { appState.numpadJustOpened = false; }, 50);
+    updateNumpadPreview();
   }
-  function closeNumpad() { document.getElementById("numpad").classList.remove("open"); }
+  function closeNumpad() {
+    document.getElementById("numpad").classList.remove("open");
+    appState.currentNumTargetIndex = null;
+    appState.currentNumTargetField = null;
+  }
   function npInput(val) {
     if (appState.currentNumTargetIndex !== null) {
       const idx = appState.currentNumTargetIndex;
       const f = appState.currentNumTargetField;
       currentItems[idx][f] = (currentItems[idx][f] || "") + val;
       renderItemRows();
+      updateNumpadPreview();
     }
   }
   function npClear() {
@@ -2042,8 +2066,18 @@
       const f = appState.currentNumTargetField;
       currentItems[idx][f] = String(currentItems[idx][f] || "").slice(0, -1);
       renderItemRows();
+      updateNumpadPreview();
     }
   }
+
+  // 金額欄以外（品名選択のコンボボックスや他の入力欄など）を操作したら、テンキーを自動的に閉じる
+  document.addEventListener('click', (e) => {
+    const numpad = document.getElementById('numpad');
+    if (!numpad || !numpad.classList.contains('open')) return;
+    if (numpad.contains(e.target)) return;
+    if (appState.numpadJustOpened) return;
+    closeNumpad();
+  });
 
   function showView(viewName) {
     appState.currentView = viewName;
@@ -2374,7 +2408,7 @@
         showMasterView(type);
       }
     } catch(e) {
-      updateStatus("通信エラーで保存できませんでした", "", false);
+      updateStatus("通信エラーで保存できませんでした", "errored", false);
     }
   }
 
@@ -2400,7 +2434,7 @@
       await fetchMasterData();
       showMasterView(type);
     } catch(e) {
-      updateStatus("通信エラーで削除できませんでした", "", false);
+      updateStatus("通信エラーで削除できませんでした", "errored", false);
     }
   }
 
