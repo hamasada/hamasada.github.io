@@ -128,6 +128,7 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
 .cell.sun .dn,.cell.hol .dn{color:var(--sun-t)} .cell.sat .dn{color:var(--sat-t)}
 .rk{color:#7d8796;white-space:nowrap;font-weight:600}
 .hn{color:var(--sun-t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+.hn.inl{flex:1 1 auto;min-width:0;margin-left:6px}
 .ev{color:#245fbe;background:#e6effc;border-radius:3px;padding:0 3px;margin-top:2px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;font-weight:600}
 .chips{display:flex;flex-wrap:wrap;padding-top:2px;flex:0 0 auto}
@@ -212,22 +213,34 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
 
 /* ---------- Cards / forms ---------- */
 .sec{background:#fff;margin:8px;border-radius:10px;box-shadow:0 1px 3px rgba(20,40,80,.09);overflow:hidden}
-.sec>h3{margin:0;padding:11px 13px;font-size:14px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--line);background:#f7f9fc}
-.sec>.in{padding:12px 13px}
-.fld{margin-bottom:12px}
+.sec>h3{margin:0;padding:9px 12px;font-size:14px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--line);background:#f7f9fc}
+.sec>.in{padding:10px 11px}
+.sec>.in.tight{padding:8px 11px}
+.fld{margin-bottom:8px}
 .fld:last-child{margin-bottom:0}
-.fld>label{display:block;font-size:12px;font-weight:700;color:var(--sub);margin-bottom:4px}
+.fld>label{display:block;font-size:12px;font-weight:700;color:var(--sub);margin-bottom:3px}
 .fld>label .rq{color:var(--err)}
 .fld input,.fld select,.fld textarea{
-  width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;
+  width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;
 }
-.fld textarea{min-height:64px;resize:vertical}
+.fld textarea{min-height:52px;resize:vertical}
 .fld input:disabled,.fld textarea:disabled{background:#f4f6f9;color:#61708a}
+.fld input::placeholder,.fld textarea::placeholder{color:#9aa5b4}
+/* 欄内に項目名を入れたボタン（日付など） */
+.fldbtn{width:100%;text-align:left;padding:9px 10px !important;font-weight:600}
 .ro{padding:9px 11px;background:#f4f6f9;border:1px solid var(--line);border-radius:8px;min-height:40px;font-size:15px;white-space:pre-wrap;word-break:break-all}
+/* ラベル＋値の1行表示（テキスト欄より縦に詰まる） */
+.kv{display:flex;align-items:baseline;gap:6px;padding:3px 0;min-width:0}
+.kv>b{flex:0 0 auto;font-size:11.5px;font-weight:700;color:var(--sub);white-space:nowrap}
+.kv>span{flex:1 1 auto;min-width:0;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kv.w>span{white-space:normal}
+.kvrow{display:flex;gap:12px}
+.kvrow>.kv{flex:1 1 0;min-width:0}
 .row{display:flex;gap:8px}
 .row>*{flex:1;min-width:0}
 .row.a{align-items:flex-end}
 .w90{flex:0 0 96px} .w110{flex:0 0 112px} .w70{flex:0 0 74px}
+.w3{flex:0 0 33%}
 .btn{padding:10px 14px;border-radius:8px;font-weight:700;font-size:14px;background:#eef2f7;color:var(--txt);white-space:nowrap}
 .btn.p{background:var(--ok);color:#fff} .btn.n{background:var(--navy);color:#fff}
 .btn.o{background:var(--ocher);color:#fff} .btn.d{background:var(--err);color:#fff}
@@ -256,14 +269,14 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
 .empty{padding:26px 16px;text-align:center;color:var(--sub);font-size:13px}
 
 /* ---------- 品名情報 ---------- */
-.item{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;background:#fbfcfe}
-.item .ih{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.item{border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px;background:#fbfcfe}
+.item .ih{display:flex;align-items:center;gap:6px;margin-bottom:6px}
 .item .ih .no{font-size:11px;font-weight:700;color:#fff;background:var(--navy);border-radius:4px;padding:1px 6px}
 .item .ih .sp{flex:1}
-.tabs{display:flex;gap:6px;margin-bottom:6px}
-.tabs button{flex:1;padding:7px;border-radius:7px;background:#eef2f7;font-weight:700;font-size:13px;color:var(--sub)}
+.tabs{display:flex;gap:6px;margin-bottom:5px}
+.tabs button{flex:1;padding:6px;border-radius:7px;background:#eef2f7;font-weight:700;font-size:13.5px;color:var(--sub)}
 .tabs button.on{background:var(--navy);color:#fff}
-.cats{display:flex;gap:4px;margin-bottom:6px;overflow-x:auto;padding-bottom:2px}
+.cats{display:flex;gap:4px;margin-bottom:5px;overflow-x:auto;padding-bottom:2px}
 .cats button{flex:0 0 auto;padding:5px 9px;border-radius:14px;background:#fff;border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--navy)}
 .cats button.on{background:var(--ocher);color:#fff;border-color:var(--ocher)}
 .dsum{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-top:2px solid var(--navy);background:#f7f9fc;font-weight:700}
@@ -733,7 +746,7 @@ var CONFIG = {
   /* 2週表示の並び  0 = 今週＋来週（既定） / 1 = 先週＋今週 */
   TWO_WEEK_BACK: 0,
 
-  VERSION: '1.0.2'
+  VERSION: '1.0.3'
 };
 
 /* ==========================================================================
@@ -925,8 +938,11 @@ function pickDate(title, initial) {
     wrap.appendChild(inp); wrap.appendChild(quick);
     var info = el('div.hint');
     function upd() {
-      info.textContent = inp.value ? (wareki(inp.value) + '（' + DOW[parseYmd(inp.value).getDay()] + '）　' +
-        (KOYOMI.info(inp.value).rokuyo || '') + (KOYOMI.info(inp.value).holiday ? ' / ' + KOYOMI.info(inp.value).holiday : '')) : '';
+      if (!inp.value) { info.textContent = ''; return; }
+      var k = KOYOMI.info(inp.value);
+      info.textContent = wareki(inp.value) + '（' + DOW[parseYmd(inp.value).getDay()] + '）' +
+        (k.holiday ? '　' + k.holiday : '') +
+        (S.market[inp.value] ? '　市場:' + S.market[inp.value].label : '　市場:休市');
     }
     inp.addEventListener('change', upd); upd();
     wrap.appendChild(info);
@@ -939,6 +955,43 @@ function pickDate(title, initial) {
     });
     setTimeout(function () { try { inp.focus(); } catch (e) { } }, 60);
   });
+}
+
+/* ==========================================================================
+ *  端末キャッシュ（localStorage）
+ *   マスタや台帳は毎回サーバから取り直さず、まず端末のキャッシュで即描画し、
+ *   裏側で最新を取り直す（体感速度を上げるため）
+ * ========================================================================== */
+var LS = {
+  get: function (k, def) {
+    try {
+      var v = localStorage.getItem('hs_c_' + k);
+      return v ? JSON.parse(v) : (def === undefined ? null : def);
+    } catch (e) { return def === undefined ? null : def; }
+  },
+  set: function (k, v) {
+    try { localStorage.setItem('hs_c_' + k, JSON.stringify(v)); return true; }
+    catch (e) { return false; }          // 容量超過時は諦める（動作に影響なし）
+  },
+  del: function (k) { try { localStorage.removeItem('hs_c_' + k); } catch (e) { } }
+};
+
+/* ==========================================================================
+ *  入力欄がキーボードに隠れないように、フォーカス時に中央へスクロールする
+ * ========================================================================== */
+function autoScroll(node) {
+  if (!node || !node.addEventListener) return node;
+  node.addEventListener('focus', function () {
+    setTimeout(function () {
+      try { node.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { }
+    }, 280);
+  });
+  return node;
+}
+/** コンテナ内の入力欄すべてに autoScroll を適用 */
+function autoScrollAll(root) {
+  $$('input,select,textarea', root).forEach(autoScroll);
+  return root;
 }
 
 /* ==========================================================================
@@ -1082,6 +1135,7 @@ var S = {
   brokers: [],
   seika: null,
   suisan: null,
+  itemsVersion: '',
   market: {},          // 'yyyy-MM-dd' -> {label,水産,青果}
   marketEstimated: false,
   offDays: {},         // 'yyyy-MM-dd' -> true（自分の休日）
@@ -1098,6 +1152,32 @@ var S = {
   loadedRange: { from: '', to: '' },
   nav: []              // 画面スタック
 };
+
+/**
+ * 日付の表示ラベル。
+ *  ★六曜はカレンダー画面だけに出す方針のため、ここには含めない
+ *   （仏滅でも納品はあるので、業務画面では邪魔になる）
+ */
+function dateLabel(s) {
+  if (!s) return '（未設定）';
+  var k = KOYOMI.info(s);
+  return mdw(s) + (k.holiday ? '　' + k.holiday : '') +
+    (S.market[s] ? '　[' + S.market[s].label + ']' : '');
+}
+/** 「ラベル　値」形式のボタン用テキスト（ラベルを欄内に入れて縦を詰める） */
+function fieldText(label, val) { return label + '　' + (val || '（未設定）'); }
+
+/** ラベル＋値の1行表示（読み取り専用。テキスト欄より縦に詰まる） */
+function kv(label, val, wide) {
+  return el('div.kv' + (wide ? '.w' : ''), null, [
+    el('b', { text: label }),
+    el('span', { text: (val === '' || val === null || val === undefined) ? '－' : String(val) })
+  ]);
+}
+/** kv を横に並べる */
+function kvRow(list) {
+  return el('div.kvrow', null, list.filter(Boolean));
+}
 
 function partnerOf(type, id) {
   var list = (type === '発注') ? S.brokers : S.customers;
@@ -1166,66 +1246,100 @@ function doLogin() {
   });
 }
 
-/** 起動時同期（進捗表示つき） */
+/**
+ * 起動時同期。
+ *  ・端末キャッシュ（localStorage）があれば先に画面を出してしまう
+ *  ・サーバ取得は sync.boot の1回だけ（旧方式は8回だったので体感が大きく変わる）
+ *  ・重い品名マスタは sync.items でバージョン差分だけ取り、必要になるまで待たない
+ */
 function bootstrap() {
-  var bar = el('div.syncbar', { text: 'データ同期中 (0%)' });
+  var t0 = Date.now();
+  var bar = el('div.syncbar', { text: '読込み中…' });
   document.body.appendChild(bar);
-  function prog(p) { bar.textContent = 'データ同期中 (' + p + '%)'; }
+  function done(msg) {
+    bar.textContent = msg;
+    setTimeout(function () { if (bar.parentNode) bar.parentNode.removeChild(bar); }, 600);
+  }
 
-  // 表示範囲（前後2か月）を先に決めておく
   S.anchor = S.anchor || new Date();
   var r = calcRange();
   S.range = r;
 
-  var chunks = [];
-  return API.call('sync.manifest', {}).then(function (mf) {
-    S.me = mf.me || S.me;
-    chunks = mf.chunks || [];
-    var done = 0;
-    // 直列に取得（GAS の同時実行制限を避ける）
-    return chunks.reduce(function (pr, name) {
-      return pr.then(function () {
-        return API.call('sync.chunk', { name: name, from: r.from, to: r.to })
-          .then(function (d) { applyChunk(name, d); })
-          .catch(function (e) { console.warn('sync ' + name + ': ' + e.message); })
-          .then(function () { done++; prog(Math.round(done / chunks.length * 100)); });
-      });
-    }, Promise.resolve());
-  }).then(function () {
-    return API.call('off.list', {}).then(function (d) {
-      S.offDays = {};
-      (d.days || []).forEach(function (x) { S.offDays[x] = true; });
-    }).catch(function () { });
-  }).then(function () {
-    prog(100);
-    setTimeout(function () { if (bar.parentNode) bar.parentNode.removeChild(bar); }, 700);
+  // ① まず端末キャッシュで即描画（2回目以降の起動は待ち時間ほぼゼロ）
+  var cached = LS.get('boot');
+  var shown = false;
+  if (cached && cached.tantos && cached.tantos.length) {
+    applyBoot(cached);
+    loadItemsFromCache();
     restoreGcal();
     navRoot();
-    toast('ようこそ ' + (S.me ? S.me.担当名 : '') + ' さん', 'info');
+    shown = true;
+    bar.textContent = '最新データを確認中…';
+  }
+
+  // ② サーバから最新を1回で取得
+  return API.call('sync.boot', { from: r.from, to: r.to }).then(function (d) {
+    applyBoot(d);
+    LS.set('boot', {
+      me: d.me, tantos: d.tantos, customers: d.customers, brokers: d.brokers,
+      market: d.market, offDays: d.offDays, itemsVersion: d.itemsVersion
+    });
+    if (!shown) { restoreGcal(); navRoot(); } else { refreshCalendar(); }
+    done('最新です（' + Math.round((Date.now() - t0) / 100) / 10 + '秒）');
+    if (!shown) toast('ようこそ ' + (S.me ? S.me.担当名 : '') + ' さん', 'info');
     if (S.marketEstimated) {
-      toast('市場カレンダーは推定値です（都のCSVを取得できませんでした）', 'warn', 5000);
+      toast('市場カレンダーは推定値です（GASで refreshMarketNow を実行してください）', 'warn', 5000);
     }
+    // ③ 品名マスタは裏で取得（バージョンが変わっていなければ本体は流れない）
+    return syncItems(d.itemsVersion);
   }).catch(function (e) {
-    if (bar.parentNode) bar.parentNode.removeChild(bar);
-    toast('同期に失敗しました: ' + (e.message || ''), 'err', 5000);
-    navRoot();
+    done('');
+    if (!shown) {
+      toast('同期に失敗しました: ' + (e.message || ''), 'err', 5000);
+      restoreGcal();
+      navRoot();
+    }
   });
 }
 
-function applyChunk(name, d) {
-  if (!d) return;
-  switch (name) {
-    case 'tanto': S.tantos = d.tantos || []; break;
-    case 'customer': S.customers = d.customers || []; break;
-    case 'broker': S.brokers = d.brokers || []; break;
-    case 'seika': S.seika = d.seika || { byCat: {} }; break;
-    case 'suisan': S.suisan = d.suisan || { byCat: {} }; break;
-    case 'market':
-      S.market = (d.market && d.market.days) || {};
-      S.marketEstimated = !!(d.market && d.market.estimated);
-      break;
-    case 'orders': applyOrders(d.orders); break;
+function applyBoot(d) {
+  if (d.me) S.me = d.me;
+  S.tantos = d.tantos || [];
+  S.customers = d.customers || [];
+  S.brokers = d.brokers || [];
+  if (d.market) {
+    S.market = d.market.days || {};
+    S.marketEstimated = !!d.market.estimated;
   }
+  S.offDays = {};
+  (d.offDays || []).forEach(function (x) { S.offDays[x] = true; });
+  if (d.orders) applyOrders(d.orders);
+}
+
+/** 品名マスタを端末キャッシュから読む */
+function loadItemsFromCache() {
+  var c = LS.get('items');
+  if (c && c.seika) { S.seika = c.seika; S.suisan = c.suisan; S.itemsVersion = c.version; }
+  return !!(c && c.seika);
+}
+
+/** 品名マスタの同期（バージョンが同じならサーバは本体を返さない） */
+function syncItems(serverVersion) {
+  var have = loadItemsFromCache();
+  if (have && serverVersion && S.itemsVersion === serverVersion) return Promise.resolve(false);
+  return API.call('sync.items', { version: S.itemsVersion || '' }).then(function (d) {
+    if (d.unchanged) return false;
+    S.seika = d.seika; S.suisan = d.suisan; S.itemsVersion = d.version;
+    LS.set('items', { version: d.version, seika: d.seika, suisan: d.suisan });
+    return true;
+  }).catch(function () { return false; });
+}
+
+/** 品名マスタが必要な画面に入る前に、確実に読み込んでおく */
+function ensureItems() {
+  if (S.seika && S.suisan) return Promise.resolve();
+  if (loadItemsFromCache()) return Promise.resolve();
+  return syncItems(null).then(function () { });
 }
 
 function applyOrders(o) {
@@ -1297,12 +1411,9 @@ function twoWeekStart(d) {
 
 function renderCalendar() {
   var main = clear($('#main'));
-  $('#hTitle').textContent = '濵貞アプリ';
-  $('#btnBack').classList.add('hide');
-  $('#hTanto').classList.add('hide');
+  setHeader('濵貞アプリ', { menu: true });          // ハンバーガーはこの画面だけ
   $('#btnView').classList.remove('hide');
   $('#btnView').textContent = (S.view === 'calm') ? '2週表示' : '月表示';
-  $('#hdr').className = 'hdr';
 
   var wrap = el('div.calwrap');
   var track = el('div.caltrack');
@@ -1532,9 +1643,11 @@ function buildCell(day, outside, compact) {
   var dnum = Number(day.slice(8, 10));
   cell.appendChild(el('div.crow', null, [
     el('span.dn', { text: (compact && dnum !== 1) ? String(dnum) : md(day) }),
+    // 2週表示は幅があるので祝日名を日付の横に置く（「8/11 山の日」）
+    (isHol && !compact) ? el('span.hn.inl', { text: k.holiday }) : null,
     el('span.rk', { text: k.rokuyo || '' })
   ]));
-  if (isHol) cell.appendChild(el('div.hn', { text: k.holiday }));
+  if (isHol && compact) cell.appendChild(el('div.hn', { text: k.holiday }));
 
   // ステータスアイコンを日付の直下に置く。
   // （右下・左下のFABが必ず居座るため、業務上いちばん重要なアイコンを上に、
@@ -1636,8 +1749,8 @@ function openDateList(day) {
     }]
   });
 
-  // Googleカレンダー分は手元のキャッシュから
-  api('order.byDate', { date: day }).then(function (d) {
+  // ★手元のデータから即描画（通信を待たない）。裏で最新を取り直して差分があれば再描画する
+  function draw(bd) {
     clear(host);
     var any = false;
     (S.gcal.events[day] || []).forEach(function (ev) {
@@ -1650,19 +1763,53 @@ function openDateList(day) {
         el('div.acts', null, [el('span', { text: '📅', title: '閲覧のみ' })])
       ]));
     });
-    (d.list || []).forEach(function (r) {
-      any = true;
-      host.appendChild(orderLi(r, m));
-    });
-    if (d.refs && d.refs.length) {
+    (bd.list || []).forEach(function (r) { any = true; host.appendChild(orderLi(r, m)); });
+    if (bd.refs && bd.refs.length) {
       host.appendChild(el('div.hint', { style: 'margin-top:8px;font-weight:700', text: '── 参考：この日が納品/使用/市場開場日の案件 ──' }));
-      d.refs.forEach(function (r) { host.appendChild(orderLi(r, m)); });
+      bd.refs.forEach(function (r) { host.appendChild(orderLi(r, m)); });
     }
     if (!any) host.appendChild(el('div.empty', { text: 'この日の案件はありません' }));
-  }).catch(function () {
-    clear(host);
-    host.appendChild(el('div.empty', { text: '読み込みに失敗しました' }));
+  }
+
+  draw(localByDate(day));
+
+  // 裏で最新を取り直す（他の担当が登録した分を反映）
+  reloadOrders().then(function () {
+    if (!m.box.parentNode) return;          // 既に閉じられていたら何もしない
+    draw(localByDate(day));
+    refreshCalendar();
+  }).catch(function () { });
+}
+
+/**
+ * 手元の S.requests / S.orders から、その日の案件リストを組み立てる。
+ *  （サーバの order.byDate と同じ判定。通信を挟まないので瞬時に開く）
+ */
+function localByDate(day) {
+  var list = [], refs = [];
+  S.requests.concat(S.orders).forEach(function (r) {
+    if (r.ステータス === 'X') {
+      if (r.キャンセル日 === day) list.push(withPhase(r, 'キャンセル'));
+      return;
+    }
+    var hit = false;
+    if (r.日付 === day) { list.push(withPhase(r, r.type === '依頼' ? '依頼' : '発注')); hit = true; }
+    if (r.確定日 === day) { list.push(withPhase(r, r.type === '依頼' ? '納品' : '入荷')); hit = true; }
+    if (hit) return;
+    if (r.type === '依頼') {
+      if (r.希望納品日 === day) refs.push(withPhase(r, '希望納品'));
+      else if (r.使用日 === day) refs.push(withPhase(r, '使用'));
+    } else if (r.市場開場日 === day) {
+      refs.push(withPhase(r, '市場開場'));
+    }
   });
+  return { date: day, list: list, refs: refs };
+}
+function withPhase(r, phase) {
+  var o = {};
+  Object.keys(r).forEach(function (k) { o[k] = r[k]; });
+  o.phase = phase;
+  return o;
 }
 
 /** 案件1件の行（タップで編集画面へ） */
@@ -1752,11 +1899,19 @@ function showPending() {
   body.appendChild(sw); body.appendChild(host);
   var m = modal({ title: '📝 未完了リスト', body: body });
   function load() {
-    clear(host).appendChild(el('div.empty', null, [el('span.spin.dk'), ' 読み込み中…']));
-    api('order.pending', { mineOnly: mineOnly }).then(function (d) {
+    // まず手元のデータで即表示（表示範囲内の分）→ 裏で全期間をサーバから取得
+    render(localPending(mineOnly), true);
+    api('order.pending', { mineOnly: mineOnly }, true).then(function (d) {
+      render(d, false);
+    }).catch(function () { });
+  }
+  function render(d, partial) {
       clear(host);
-      if (!d.list.length) { host.appendChild(el('div.empty', { text: '未完了の案件はありません 🎉' })); return; }
-      host.appendChild(el('div.hint', { text: d.count + ' 件' }));
+      if (!d.list.length) {
+        host.appendChild(el('div.empty', { text: partial ? '読み込み中…' : '未完了の案件はありません 🎉' }));
+        return;
+      }
+      host.appendChild(el('div.hint', { text: d.count + ' 件' + (partial ? '（表示範囲のみ／全期間を確認中…）' : '') }));
       d.list.forEach(function (r) {
         r.phase = statusLabel(r);
         host.appendChild(el('div', { style: 'margin-bottom:6px' }, [
@@ -1764,9 +1919,20 @@ function showPending() {
           orderLi(r, m)
         ]));
       });
-    }).catch(function () { clear(host).appendChild(el('div.empty', { text: '読み込み失敗' })); });
   }
   load();
+}
+
+/** 手元のデータから未完了リストを作る（完了・キャンセルは除外） */
+function localPending(mineOnly) {
+  var list = S.requests.concat(S.orders).filter(function (r) {
+    if (r.ステータス === 'X') return false;
+    if (r.type === '依頼' && r.ステータス === '5') return false;
+    if (r.type === '発注' && r.ステータス === '6') return false;
+    if (mineOnly && r.担当ID && S.me && r.担当ID !== S.me.担当ID) return false;
+    return true;
+  }).sort(function (a, b) { return (a.日付 < b.日付) ? 1 : (a.日付 > b.日付 ? -1 : 0); });
+  return { list: list, count: list.length };
 }
 
 /* ==========================================================================
@@ -1819,6 +1985,8 @@ function setHeader(title, opt) {
   $('#hdr').className = 'hdr' + (opt.kind ? ' ' + opt.kind : '');
   $('#btnBack').classList.toggle('hide', !opt.back);
   $('#btnView').classList.add('hide');
+  // ハンバーガーメニューはカレンダー画面のみ（他画面は「←」で戻る）
+  $('#btnMenu').classList.toggle('hide', !opt.menu);
   $('#hTanto').classList.toggle('hide', !opt.tanto);
   if (opt.tanto) buildTantoSelect(opt.tanto, opt.onTanto);
 }
@@ -1845,35 +2013,31 @@ function closeDrawer() { $('#drawer').classList.remove('on'); }
  *  アカウント（担当シートの自分の行のみ編集可・担当IDは変更不可）
  * ========================================================================== */
 function renderAccount() {
-  setHeader('濵貞アプリ', { back: true });
+  setHeader('アカウント', { back: true });
   var main = clear($('#main'));
   var sc = el('div.scroll');
   main.appendChild(sc);
 
   var f = {};
-  function fld(label, key, type, ph, disabled) {
-    var i = el('input', { type: type || 'text', value: (S.me && S.me[key]) || '', placeholder: ph || '' });
-    if (disabled) i.disabled = true;
+  function inp(key, type, ph) {
+    var i = el('input', { type: type || 'text', value: (S.me && S.me[key]) || '', placeholder: ph });
     f[key] = i;
-    return el('div.fld', null, [el('label', { html: label }), i]);
+    return el('div.fld', null, [i]);
   }
-
-  var pw1 = el('input', { type: 'password', inputmode: 'numeric', placeholder: '変更する場合のみ入力', autocomplete: 'new-password' });
-  var pw2 = el('input', { type: 'password', inputmode: 'numeric', placeholder: 'もう一度入力', autocomplete: 'new-password' });
+  var pw1 = el('input', { type: 'password', inputmode: 'numeric', placeholder: 'パスワード（変更する場合のみ入力）', autocomplete: 'new-password' });
+  var pw2 = el('input', { type: 'password', inputmode: 'numeric', placeholder: 'パスワード確認', autocomplete: 'new-password' });
 
   sc.appendChild(el('div.sec', null, [
     el('h3', { text: 'アカウント情報' }),
-    el('div.in', null, [
-      el('div.fld', null, [el('label', { text: '担当ID（変更不可）' }),
-        el('div.ro', { text: (S.me && S.me.担当ID) || '' })]),
-      fld('名称 <span class="rq">*</span>', '担当名', 'text', '例: 濵貞アプリ太郎'),
-      fld('携帯番号', '担当携帯', 'tel', '090-0000-0000'),
-      fld('FAX', '担当FAX', 'tel', '03-0000-0000'),
-      fld('メールアドレス', '担当メール', 'email', 'example@mail.com'),
-      el('div.fld', null, [el('label', { text: 'パスワード（変更する場合のみ入力）' }), pw1]),
-      el('div.fld', null, [el('label', { text: 'パスワード確認' }), pw2]),
+    autoScrollAll(el('div.in', null, [
+      kv('担当ID', (S.me && S.me.担当ID) || ''),
+      inp('担当名', 'text', '名称（必須）'),
+      el('div.row', null, [inp('担当携帯', 'tel', '携帯番号'), inp('担当FAX', 'tel', 'FAX')]),
+      inp('担当メール', 'email', 'メールアドレス'),
+      el('div.fld', null, [pw1]),
+      el('div.fld', null, [pw2]),
       el('div.hint', { text: '※新規担当の登録はできません。担当者の追加はスプレッドシートの「担当」シートを直接編集してください。' })
-    ])
+    ]))
   ]));
 
   sc.appendChild(el('div.sec', null, [
@@ -1902,6 +2066,7 @@ function renderAccount() {
           for (var i = 0; i < S.tantos.length; i++) {
             if (S.tantos[i].担当ID === S.me.担当ID) S.tantos[i].担当名 = S.me.担当名;
           }
+          LS.del('boot');
           toast('保存しました');
           back();
         });
@@ -1916,47 +2081,47 @@ function renderAccount() {
  *              リストのアイコンで電話発信・メーラー・HP・地図
  * ========================================================================== */
 function partnerMeta(kind) {
-  return (kind === '仲卸')
-    ? {
-      kind: '仲卸', title: '仲卸台帳', idCol: '仲卸ID', nameCol: '仲卸名',
-      cols: [['仲卸名', '名称', 'text', '', true], ['役職', '役職', 'text', '例: 代表取締役'],
-        ['担当者', '担当者', 'text', ''], ['仲卸携帯', '携帯番号', 'tel', '090-0000-0000'],
-        ['仲卸TEL', 'TEL', 'tel', '03-0000-0000'], ['仲卸FAX', 'FAX', 'tel', '03-0000-0000'],
-        ['仲卸メール', 'メールアドレス', 'email', 'example@mail.com'],
-        ['仲卸HP', 'ホームページURL', 'url', 'https://'],
-        ['仲卸〒', '郵便番号', 'text', '000-0000'], ['仲卸住所', '住所', 'text', ''],
-        ['メモ', 'メモ', 'textarea', '']],
-      tel: '仲卸携帯', tel2: '仲卸TEL', mail: '仲卸メール', hp: '仲卸HP', addr: '仲卸住所'
+  var isB = (kind === '仲卸');
+  var pre = isB ? '仲卸' : '顧客';
+  return {
+    kind: isB ? '仲卸' : '顧客',
+    title: isB ? '仲卸台帳' : '顧客台帳',
+    idCol: pre + 'ID', nameCol: pre + '名',
+    keys: [pre + '名', '役職', '担当者', pre + '携帯', pre + 'TEL', pre + 'FAX',
+      pre + 'メール', pre + 'HP', pre + '〒', pre + '住所', 'メモ'],
+    tel: pre + '携帯', tel2: pre + 'TEL', mail: pre + 'メール',
+    hp: pre + 'HP', addr: pre + '住所', zip: pre + '〒',
+    ph: {
+      name: isB ? '仲卸名（必須）' : '顧客名（必須）',
+      post: isB ? '役職（例: 代表取締役）' : '役職（例: 店長）'
     }
-    : {
-      kind: '顧客', title: '顧客台帳', idCol: '顧客ID', nameCol: '顧客名',
-      cols: [['顧客名', '名称', 'text', '', true], ['役職', '役職', 'text', '例: 店長'],
-        ['担当者', '担当者', 'text', ''], ['顧客携帯', '携帯番号', 'tel', '090-0000-0000'],
-        ['顧客TEL', 'TEL', 'tel', '03-0000-0000'], ['顧客FAX', 'FAX', 'tel', '03-0000-0000'],
-        ['顧客メール', 'メールアドレス', 'email', 'example@mail.com'],
-        ['顧客HP', 'ホームページURL', 'url', 'https://'],
-        ['顧客〒', '郵便番号', 'text', '000-0000'], ['顧客住所', '住所', 'text', ''],
-        ['メモ', 'メモ', 'textarea', '']],
-      tel: '顧客携帯', tel2: '顧客TEL', mail: '顧客メール', hp: '顧客HP', addr: '顧客住所'
-    };
+  };
 }
 
 function renderPartnerList(kind) {
   var M = partnerMeta(kind);
-  setHeader('濵貞アプリ', { back: true });
+  setHeader(M.title, { back: true });
   var main = clear($('#main'));
   var sc = el('div.scroll');
   main.appendChild(sc);
-  sc.appendChild(el('div.sec', null, [el('h3', { text: M.title })]));
-  var host = el('div.list');
+  var host = el('div.list', { style: 'margin-top:8px' });
   sc.appendChild(host);
-  host.appendChild(el('div.empty', null, [el('span.spin.dk'), ' 読み込み中…']));
 
-  api('partner.list', { kind: M.kind }).then(function (d) {
+  draw(M.kind === '仲卸' ? S.brokers : S.customers);      // まず手元のデータで即表示
+  api('partner.list', { kind: M.kind }, true).then(function (d) {
     if (M.kind === '仲卸') S.brokers = d.list; else S.customers = d.list;
+    LS.del('boot');
+    draw(d.list);
+  }).catch(function () { });
+
+  function draw(list) {
     clear(host);
-    if (!d.list.length) { host.appendChild(el('div.empty', { text: '登録がありません。右下の＋から追加してください' })); return; }
-    d.list.forEach(function (r) {
+    list = list || [];
+    if (!list.length) {
+      host.appendChild(el('div.empty', { text: '登録がありません。右下の＋から追加してください' }));
+      return;
+    }
+    list.forEach(function (r) {
       var acts = el('div.acts');
       if (has(r[M.tel]) || has(r[M.tel2])) {
         acts.appendChild(el('a', { href: 'tel:' + (r[M.tel] || r[M.tel2]).replace(/[^0-9+]/g, ''), text: '📱', title: '電話', onclick: stop }));
@@ -1980,7 +2145,7 @@ function renderPartnerList(kind) {
         acts
       ]));
     });
-  }).catch(function () { clear(host).appendChild(el('div.empty', { text: '読み込み失敗' })); });
+  }
 
   main.appendChild(el('div.fabrow', null, [
     el('button.fab.gray', { text: '←', onclick: back }),
@@ -1990,56 +2155,61 @@ function renderPartnerList(kind) {
   function stop(e) { e.stopPropagation(); }
 }
 
+/**
+ * 台帳の編集画面。
+ *  ・ラベルは置かず、欄内の説明（placeholder）で分かるようにして縦を詰める
+ *  ・役職＋担当者、TEL＋FAX は1行。郵便番号は1/3幅
+ *  ・濵貞担当はヘッダー右上のコンボボックス（他画面と統一）
+ */
 function renderPartnerEdit(kind, data, after) {
   var M = partnerMeta(kind);
   var isNew = !data;
-  setHeader('濵貞アプリ', { back: true });
+  var tantoId = (data && data['担当ID']) || (S.me ? S.me.担当ID : '');
+
+  setHeader(M.kind + (isNew ? ' 新規登録' : ' 情報編集'), {
+    back: true, tanto: tantoId, onTanto: function (v) { tantoId = v; }
+  });
   var main = clear($('#main'));
   var sc = el('div.scroll');
   main.appendChild(sc);
 
   var f = {};
-  var inner = el('div.in');
-  M.cols.forEach(function (c) {
-    var key = c[0], label = c[1], type = c[2], ph = c[3], req = c[4];
-    var i = (type === 'textarea')
-      ? el('textarea', { placeholder: ph || '' })
-      : el('input', { type: type, placeholder: ph || '' });
-    i.value = data ? (data[key] || '') : '';
+  function inp(key, type, ph, cls) {
+    var i = el('input', { type: type || 'text', placeholder: ph || key, value: data ? (data[key] || '') : '' });
     f[key] = i;
-    inner.appendChild(el('div.fld', null, [
-      el('label', { html: esc(label) + (req ? ' <span class="rq">*</span>' : '') }), i
-    ]));
-  });
-  var tsel = el('select');
-  S.tantos.forEach(function (t) { tsel.appendChild(el('option', { value: t.担当ID, text: t.担当名 })); });
-  tsel.value = (data && data['担当ID']) || (S.me ? S.me.担当ID : '');
-  inner.appendChild(el('div.fld', null, [el('label', { text: '担当（濵貞スタッフ）' }), tsel]));
-
-  sc.appendChild(el('div.sec', null, [
-    el('h3', { text: M.kind + (isNew ? ' 新規登録' : ' 情報編集') }),
-    inner
-  ]));
-  if (!isNew) {
-    sc.appendChild(el('div.sec', null, [el('div.in', null, [
-      el('div.hint', { text: M.kind + 'ID: ' + data[M.idCol] })
-    ])]));
+    return el('div.fld' + (cls || ''), null, [i]);
   }
+  var memo = el('textarea', { placeholder: 'メモ' });
+  memo.value = data ? (data['メモ'] || '') : '';
+  f['メモ'] = memo;
+
+  var pre = M.kind === '仲卸' ? '仲卸' : '顧客';
+  sc.appendChild(el('div.sec', null, [
+    autoScrollAll(el('div.in', null, [
+      inp(M.nameCol, 'text', M.ph.name),
+      el('div.row', null, [inp('役職', 'text', M.ph.post), inp('担当者', 'text', '担当者名')]),
+      inp(pre + '携帯', 'tel', '携帯番号'),
+      el('div.row', null, [inp(pre + 'TEL', 'tel', 'TEL'), inp(pre + 'FAX', 'tel', 'FAX')]),
+      inp(pre + 'メール', 'email', 'メールアドレス'),
+      inp(pre + 'HP', 'url', 'ホームページURL'),
+      el('div.row', null, [
+        inp(pre + '〒', 'text', '〒000-0000', '.w3'),
+        inp(pre + '住所', 'text', '住所')
+      ]),
+      el('div.fld', null, [memo])
+    ]))
+  ]));
 
   var fabs = el('div.fabrow');
   fabs.appendChild(el('button.fab.gray', { text: '←', onclick: back }));
-  if (!isNew) {
-    fabs.appendChild(el('button.fab.r', {
-      text: '🗑', title: '削除', onclick: function () { doDelete(); }
-    }));
-  }
+  if (!isNew) fabs.appendChild(el('button.fab.r', { text: '🗑', title: '削除', onclick: doDelete }));
   fabs.appendChild(el('button.fab.g', { text: '💾', onclick: doSave }));
   main.appendChild(fabs);
 
   function collect() {
     var o = {};
-    M.cols.forEach(function (c) { o[c[0]] = f[c[0]].value; });
-    o['担当ID'] = tsel.value;
+    M.keys.forEach(function (k) { o[k] = f[k] ? f[k].value : ''; });
+    o['担当ID'] = tantoId;
     if (!isNew) o[M.idCol] = data[M.idCol];
     return o;
   }
@@ -2048,11 +2218,11 @@ function renderPartnerEdit(kind, data, after) {
     if (!has(o[M.nameCol])) { toast('名称は必須です', 'err'); return; }
     api('partner.save', { kind: M.kind, data: o }).then(function (d) {
       toast(isNew ? M.kind + 'を登録しました' : '更新しました');
+      LS.del('boot');
       return api('partner.list', { kind: M.kind }).then(function (l) {
         if (M.kind === '仲卸') S.brokers = l.list; else S.customers = l.list;
-        // 登録後は呼び出し元の画面に名前を張り付ける（仕様書 p6-6）
-        if (after) { after(d.id, o[M.nameCol]); back(); }
-        else back();
+        if (after) after(d.id, o[M.nameCol]);
+        back();
       });
     });
   }
@@ -2064,14 +2234,15 @@ function renderPartnerEdit(kind, data, after) {
           if (d.needConfirm) {
             return confirmModal('確認', d.message, '強制削除', 'd').then(function (ok2) {
               if (!ok2) return;
-              return api('partner.delete', { kind: M.kind, id: data[M.idCol], force: true }).then(done);
+              return api('partner.delete', { kind: M.kind, id: data[M.idCol], force: true }).then(fin);
             });
           }
-          done();
+          fin();
         });
       });
-    function done() {
+    function fin() {
       toast('削除しました');
+      LS.del('boot');
       api('partner.list', { kind: M.kind }).then(function (l) {
         if (M.kind === '仲卸') S.brokers = l.list; else S.customers = l.list;
         back();
@@ -2084,7 +2255,7 @@ function renderPartnerEdit(kind, data, after) {
  *  監査ログ閲覧（「言った言わない」対策）
  * ========================================================================== */
 function renderLog() {
-  setHeader('濵貞アプリ', { back: true });
+  setHeader('操作履歴', { back: true });
   var main = clear($('#main'));
   var sc = el('div.scroll');
   main.appendChild(sc);
@@ -2114,13 +2285,57 @@ function renderLog() {
 
 /* ==========================================================================
  *  依頼登録 / 発注登録（新規）  仕様書 p6 の 1〜12
+ *   ・ラベルは置かず、欄内の説明（placeholder / 先頭ラベル）で分かるようにして縦を詰める
+ *   ・品名は「品名を選択」「産地を選択」の2コンボ（どちらも重複なし）＋手入力欄
+ *   ・入力途中に全カードを作り直さない（＝#1に戻る現象を防ぐ）
  * ========================================================================== */
 
 var UNIT_LIST = ['kg', '箱', 'パック', '束', '本', '個', '-'];
 var CONTACTS = ['FAX', '電話', '口頭', 'メール', 'LINE', 'その他'];
+var CAT_ORDER = { '青果': ['野菜', '果物'], '水産': ['大物', '鮮魚', '活魚', '冷凍', '塩干加工'] };
 
 function openOrderForm(type, init) {
   navTo('orderForm', { type: type, init: init || {}, draft: null });
+}
+
+/* ---- 品名マスタのヘルパ ---- */
+function masterOf(kind) { return (kind === '水産') ? S.suisan : S.seika; }
+function catList(kind) {
+  var m = masterOf(kind);
+  var cats = Object.keys((m && m.byCat) || {});
+  var order = CAT_ORDER[kind] || [];
+  cats.sort(function (a, b) {
+    var ia = order.indexOf(a), ib = order.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+  return cats;
+}
+function catRows(kind, cat) {
+  var m = masterOf(kind);
+  return (m && m.byCat && m.byCat[cat]) || [];
+}
+/** 品名の重複を除いたリスト（元データが五十音順なので順序はそのまま） */
+function uniqNames(rows) {
+  var seen = {}, out = [];
+  rows.forEach(function (r) { if (!seen[r.name]) { seen[r.name] = 1; out.push(r.name); } });
+  return out;
+}
+/** 産地の重複を除いたリスト。品名を指定するとその品名の産地だけ */
+function uniqOrigins(rows, name) {
+  var seen = {}, out = [];
+  rows.forEach(function (r) {
+    if (name && r.name !== name) return;
+    var o = r.origin || '';
+    if (!o || seen[o]) return;
+    seen[o] = 1; out.push(o);
+  });
+  return out.sort(function (a, b) { return kana(a) < kana(b) ? -1 : 1; });
+}
+function findMasterId(rows, name, origin) {
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].name === name && (!origin || rows[i].origin === origin)) return rows[i].id;
+  }
+  return '';
 }
 
 function renderOrderForm(P) {
@@ -2130,7 +2345,7 @@ function renderOrderForm(P) {
   var d = P.draft || Object.assign({
     日付: todayYmd(), 連絡形態: 'FAX', 取引先ID: '', 取引先名: '', 概要: '',
     希望納品日: '', 使用日: '', 市場開場日: isReq ? '' : todayYmd(), 補足事項: '',
-    担当ID: (S.me ? S.me.担当ID : ''), 依頼ID: '', items: [newItem()]
+    担当ID: (S.me ? S.me.担当ID : ''), 依頼ID: '', copied: false, items: [newItem()]
   }, P.init || {});
   if (!d.items || !d.items.length) d.items = [newItem()];
   P.draft = d;
@@ -2144,29 +2359,18 @@ function renderOrderForm(P) {
   var sc = el('div.scroll');
   main.appendChild(sc);
 
-  /* ---- 日付 / 連絡形態 / キャンセル ---- */
-  var dateBtn = el('button.btn.gh', {
-    style: 'width:100%;text-align:left',
-    text: dateLabel(d.日付),
+  /* ---- 日付 / 連絡形態 ---- */
+  var dateBtn = el('button.btn.gh.fldbtn', {
+    text: fieldText('日付', dateLabel(d.日付)),
     onclick: function () {
-      pickDate('日付を選択', d.日付).then(function (v) {
+      pickDate('日付', d.日付).then(function (v) {
         if (v === null) return;
-        d.日付 = v; dateBtn.textContent = dateLabel(v);
+        d.日付 = v; dateBtn.textContent = fieldText('日付', dateLabel(v));
       });
     }
   });
   var contactSel = sel(CONTACTS, d.連絡形態, function (v) { d.連絡形態 = v; });
   contactSel.setAttribute('data-t', 'contact');
-
-  sc.appendChild(el('div.sec', null, [
-    el('div.in', null, [
-      el('div.row.a', null, [
-        el('div.fld', { style: 'flex:1' }, [el('label', { text: '日付' }), dateBtn]),
-        el('div.fld.w110', null, [el('label', { text: '連絡形態' }), contactSel])
-      ]),
-      el('button.btn.d', { style: 'width:100%', text: '✕ キャンセル（記録を残して取消）', onclick: doCancel })
-    ])
-  ]));
 
   /* ---- 取引先 ---- */
   var pSel = el('select', { 'data-t': 'partner' });
@@ -2178,7 +2382,7 @@ function renderOrderForm(P) {
     list.forEach(function (r) {
       pSel.appendChild(el('option', {
         value: String(r[idc]),
-        text: r[nc] + (r.mine ? ' ★' : '') + (has(r['担当者']) ? '（' + r['担当者'] + '）' : '')
+        text: r[nc] + (r.mine ? ' ★' : '')
       }));
     });
     pSel.appendChild(el('option', { value: '__new__', text: '＋ 新規登録…' }));
@@ -2198,168 +2402,221 @@ function renderOrderForm(P) {
     d.取引先ID = pSel.value;
   };
 
-  var sum = el('textarea', { placeholder: isReq ? '依頼概要（例: さくらさくみらい勝どき 8/7使用分）' : '発注概要（顧客分を合算した発注内容）' });
+  var sum = el('textarea', { placeholder: isReq ? '依頼概要（例: さくらさくみらい勝どき 8/7使用分）' : '発注概要（顧客分を合算した内容）' });
   sum.value = d.概要 || '';
   sum.oninput = function () { d.概要 = sum.value; };
 
-  sc.appendChild(el('div.sec', null, [
-    el('h3', { text: isReq ? '顧客・依頼内容' : '仲卸・発注内容' }),
-    el('div.in', null, [
-      el('div.fld', null, [el('label', { html: (isReq ? '顧客' : '仲卸') + ' <span class="rq">*</span>' }), pSel]),
-      el('div.fld', null, [el('label', { text: isReq ? '依頼概要' : '発注概要' }), sum])
-    ])
-  ]));
-
-  /* ---- 日付欄（依頼: 希望納品日/使用日 ・ 発注: 市場開場日）＋ 補足事項 ---- */
-  var extra = el('div.in');
-  if (isReq) {
-    extra.appendChild(el('div.row', null, [
-      dateFld('希望納品日', '希望納品日'),
-      dateFld('使用日', '使用日')
-    ]));
-  } else {
-    extra.appendChild(dateFld('市場開場日', '市場開場日'));
-  }
-  var note = el('textarea', { placeholder: '補足事項（例: 大小込みで／小口分け希望 など）' });
-  note.value = d.補足事項 || '';
-  note.oninput = function () { d.補足事項 = note.value; };
-  extra.appendChild(el('div.fld', null, [el('label', { text: '補足事項' }), note]));
-  sc.appendChild(el('div.sec', null, [el('h3', { text: '日程・補足' }), extra]));
-
+  /* ---- 日程 ---- */
   function dateFld(label, key) {
-    var b = el('button.btn.gh', {
-      style: 'width:100%;text-align:left', text: d[key] ? dateLabel(d[key]) : '（未設定）',
+    var b = el('button.btn.gh.fldbtn', {
+      text: fieldText(label, d[key] ? dateLabel(d[key]) : ''),
       onclick: function () {
         pickDate(label, d[key] || d.日付).then(function (v) {
           if (v === null) return;
-          d[key] = v; b.textContent = v ? dateLabel(v) : '（未設定）';
+          d[key] = v;
+          b.textContent = fieldText(label, v ? dateLabel(v) : '');
           if (key === '市場開場日' && v && !S.market[v]) {
             toast('この日は市場が休市の可能性があります', 'warn', 4000);
           }
         });
       }
     });
-    return el('div.fld', null, [el('label', { text: label }), b]);
+    return el('div.fld', null, [b]);
   }
+  var note = el('textarea', { placeholder: '補足事項（例: 大小込みで／小口分け希望）' });
+  note.value = d.補足事項 || '';
+  note.oninput = function () { d.補足事項 = note.value; };
+
+  var head = el('div.in', null, [
+    el('div.row', null, [
+      el('div.fld', { style: 'flex:1' }, [dateBtn]),
+      el('div.fld.w110', null, [contactSel])
+    ]),
+    el('div.fld', null, [pSel]),
+    el('div.fld', null, [sum]),
+    isReq
+      ? el('div.row', null, [dateFld('希望納品日', '希望納品日'), dateFld('使用日', '使用日')])
+      : dateFld('市場開場日', '市場開場日'),
+    el('div.fld', null, [note])
+  ]);
+  sc.appendChild(el('div.sec', null, [autoScrollAll(head)]));
 
   /* ---- 品名情報 ---- */
   var itemsHost = el('div.in');
-  sc.appendChild(el('div.sec', null, [
-    el('h3', { text: '品名情報' }),
-    itemsHost
-  ]));
+  var addBtn = el('button.btn.n', {
+    style: 'width:100%', text: '＋ 品名項目を追加', 'data-t': 'itemAdd',
+    onclick: function () {
+      d.items.push(newItem());
+      var card = itemCard(d.items[d.items.length - 1]);
+      itemsHost.insertBefore(card, addBtn);
+      renumber();
+      setTimeout(function () {
+        try { card.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { }
+      }, 60);
+    }
+  });
+  sc.appendChild(el('div.sec', null, [el('h3', { text: '品名情報' }), itemsHost]));
+
   function drawItems() {
     clear(itemsHost);
-    d.items.forEach(function (it, i) { itemsHost.appendChild(itemCard(it, i)); });
-    itemsHost.appendChild(el('button.btn.n', {
-      style: 'width:100%', text: '＋ 品名項目を追加', 'data-t': 'itemAdd',
-      onclick: function () { d.items.push(newItem()); drawItems(); }
-    }));
+    d.items.forEach(function (it) { itemsHost.appendChild(itemCard(it)); });
+    itemsHost.appendChild(addBtn);
+    renumber();
   }
-  drawItems();
+  /** カードの #番号 を振り直す（追加・削除のあと） */
+  function renumber() {
+    $$('.item', itemsHost).forEach(function (c, i) {
+      var no = $('.no', c);
+      if (no) no.textContent = '#' + (i + 1);
+    });
+  }
+  function cardIndex(card) { return $$('.item', itemsHost).indexOf(card); }
+  /** そのカードだけ差し替える（全部作り直すとスクロール位置が飛ぶため） */
+  function redraw(card) {
+    var i = cardIndex(card);
+    if (i < 0) return;
+    itemsHost.replaceChild(itemCard(d.items[i]), card);
+    renumber();
+  }
 
-  function itemCard(it, idx) {
+  if (!S.seika || !S.suisan) {
+    itemsHost.appendChild(el('div.empty', null, [el('span.spin.dk'), ' 品名マスタを読み込み中…']));
+    itemsHost.appendChild(addBtn);
+    ensureItems().then(drawItems);
+  } else {
+    drawItems();
+  }
+
+  /* ---- 品名カード ---- */
+  function itemCard(it) {
     var card = el('div.item');
     card.appendChild(el('div.ih', null, [
-      el('span.no', { text: '#' + (idx + 1) }),
+      el('span.no', { text: '#' }),
       el('div.sp'),
       el('button.btn.s.d', {
         text: '取消し', 'data-t': 'itemDel', onclick: function () {
-          d.items.splice(idx, 1);
-          if (!d.items.length) d.items.push(newItem());
-          drawItems();
+          var i = cardIndex(card);
+          if (i < 0) return;
+          d.items.splice(i, 1);
+          itemsHost.removeChild(card);
+          if (!d.items.length) {
+            d.items.push(newItem());
+            itemsHost.insertBefore(itemCard(d.items[0]), addBtn);
+          }
+          renumber();
         }
       })
     ]));
 
-    // 青果 / 水産 タブ
+    // 青果 / 水産
     var tabs = el('div.tabs');
     ['青果', '水産'].forEach(function (k) {
       tabs.appendChild(el('button' + (it.マスタ区分 === k ? '.on' : ''), {
-        text: k, onclick: function () { it.マスタ区分 = k; it.分類 = ''; drawItems(); }
+        text: k, onclick: function () {
+          if (it.マスタ区分 === k) return;
+          it.マスタ区分 = k; it.分類 = '';
+          redraw(card);
+        }
       }));
     });
     card.appendChild(tabs);
 
-    // 分類ボタン
-    if (it.マスタ区分) {
-      var master = (it.マスタ区分 === '青果') ? S.seika : S.suisan;
-      var cats = Object.keys((master && master.byCat) || {});
-      var order = (it.マスタ区分 === '青果') ? ['野菜', '果物'] : ['大物', '鮮魚', '活魚', '冷凍', '塩干加工'];
-      cats.sort(function (a, b) {
-        var ia = order.indexOf(a), ib = order.indexOf(b);
-        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-      });
+    // 分類
+    var cats = catList(it.マスタ区分);
+    if (cats.length) {
       var cbox = el('div.cats');
       cats.forEach(function (c) {
         cbox.appendChild(el('button' + (it.分類 === c ? '.on' : ''), {
-          text: c, onclick: function () { it.分類 = (it.分類 === c ? '' : c); drawItems(); }
+          text: c, onclick: function () {
+            it.分類 = (it.分類 === c ? '' : c);
+            redraw(card);
+          }
         }));
       });
       card.appendChild(cbox);
-
-      // 品名コンボボックス（五十音順）
-      if (it.分類) {
-        var rows = ((master.byCat || {})[it.分類] || []);
-        var msel = el('select');
-        msel.appendChild(el('option', { value: '', text: '品名を選択…（' + rows.length + '件）' }));
-        rows.forEach(function (r, ri) {
-          msel.appendChild(el('option', {
-            value: String(ri), text: r.name + (has(r.origin) ? '（' + r.origin + '）' : '')
-          }));
-        });
-        msel.setAttribute('data-t', 'itemMaster');
-        msel.onchange = function () {
-          var r = rows[Number(msel.value)];
-          if (!r) return;
-          it.品名 = r.name; it.産地 = r.origin || ''; it.マスタID = r.id;
-          drawItems();
-        };
-        card.appendChild(el('div.fld', null, [el('label', { text: '品名リスト（五十音順）' }), msel]));
-      }
     }
 
-    var nameIn = el('input', { type: 'text', placeholder: '品名（手入力も可）', value: it.品名 || '', 'data-t': 'itemName' });
-    nameIn.oninput = function () { it.品名 = nameIn.value; };
-    card.appendChild(el('div.fld', null, [el('label', { html: '品名 <span class="rq">*</span>' }), nameIn]));
+    var nameIn = el('input', { type: 'text', placeholder: '品名（必須）', value: it.品名 || '', 'data-t': 'itemName' });
+    var originIn = el('input', { type: 'text', placeholder: '産地', value: it.産地 || '' });
 
-    var qIn = el('input', { type: 'number', step: '0.01', inputmode: 'decimal', placeholder: '0.0', value: it.数量 === '' ? '' : it.数量, 'data-t': 'itemQty' });
+    // 品名を選択 / 産地を選択（どちらも重複なし）
+    var rows = it.分類 ? catRows(it.マスタ区分, it.分類) : [];
+    if (rows.length) {
+      var nSel = el('select', { 'data-t': 'itemMaster' });
+      var oSel = el('select', { 'data-t': 'itemOrigin' });
+      var names = uniqNames(rows);
+      clear(nSel).appendChild(el('option', { value: '', text: '品名を選択…（' + names.length + '件）' }));
+      names.forEach(function (n) { nSel.appendChild(el('option', { value: n, text: n })); });
+      nSel.value = names.indexOf(it.品名) >= 0 ? it.品名 : '';
+
+      function fillOrigin() {
+        var ol = uniqOrigins(rows, nSel.value || '');
+        clear(oSel).appendChild(el('option', { value: '', text: '産地を選択…（' + ol.length + '件）' }));
+        ol.forEach(function (o) { oSel.appendChild(el('option', { value: o, text: o })); });
+        oSel.value = ol.indexOf(it.産地) >= 0 ? it.産地 : '';
+        return ol;
+      }
+      fillOrigin();
+      nSel.onchange = function () {
+        it.品名 = nSel.value;
+        nameIn.value = it.品名;
+        var ol = fillOrigin();
+        if (ol.length === 1) { it.産地 = ol[0]; oSel.value = ol[0]; originIn.value = ol[0]; }
+        it.マスタID = findMasterId(rows, it.品名, it.産地);
+      };
+      oSel.onchange = function () {
+        it.産地 = oSel.value;
+        originIn.value = it.産地;
+        it.マスタID = findMasterId(rows, it.品名, it.産地);
+      };
+      card.appendChild(el('div.row', null, [
+        el('div.fld', null, [nSel]), el('div.fld', null, [oSel])
+      ]));
+    }
+
+    // 品名 / 産地（手入力）
+    nameIn.oninput = function () { it.品名 = nameIn.value; };
+    originIn.oninput = function () { it.産地 = originIn.value; };
+    card.appendChild(el('div.row', null, [
+      el('div.fld', null, [nameIn]), el('div.fld', null, [originIn])
+    ]));
+
+    // 数量 / 単位
+    var qIn = el('input', {
+      type: 'number', step: '0.01', inputmode: 'decimal', placeholder: '数量',
+      value: it.数量 === '' ? '' : it.数量, 'data-t': 'itemQty'
+    });
     qIn.oninput = function () { it.数量 = qIn.value; };
     var uSel = sel(UNIT_LIST, it.単位 || 'kg', function (v) { it.単位 = v; });
     card.appendChild(el('div.row', null, [
-      el('div.fld', { style: 'flex:1' }, [el('label', { text: '数量' }), qIn]),
-      el('div.fld.w90', null, [el('label', { text: '単位' }), uSel])
+      el('div.fld', { style: 'flex:1' }, [qIn]),
+      el('div.fld.w90', null, [uSel])
     ]));
 
-    var oIn = el('input', { type: 'text', placeholder: '産地', value: it.産地 || '' });
-    oIn.oninput = function () { it.産地 = oIn.value; };
+    // メモ（1行）
     var mIn = el('input', { type: 'text', placeholder: 'メモ', value: it.メモ || '' });
     mIn.oninput = function () { it.メモ = mIn.value; };
-    card.appendChild(el('div.row', null, [
-      el('div.fld', { style: 'flex:1' }, [el('label', { text: '産地' }), oIn]),
-      el('div.fld', { style: 'flex:1' }, [el('label', { text: 'メモ' }), mIn])
-    ]));
-    return card;
+    card.appendChild(el('div.fld', null, [mIn]));
+
+    return autoScrollAll(card);
   }
 
-  /* ---- FAB ---- */
+  /* ---- FAB（キャンセルは🗑のみ。画面内にボタンは置かない） ---- */
   main.appendChild(el('div.fabrow', null, [
     el('button.fab.gray', { text: '←', onclick: back }),
-    el('button.fab.r', { text: '🗑', title: 'キャンセル', onclick: doCancel }),
+    el('button.fab.r', { text: '🗑', title: 'キャンセル（記録を残して取消）', onclick: doCancel }),
     el('button.fab.g', { text: '💾', title: '確定登録', onclick: doSave })
   ]));
 
-  /* ---- 収集 ---- */
   function collect() {
     return {
       日付: d.日付, 連絡形態: d.連絡形態, 取引先ID: d.取引先ID, 取引先名: d.取引先名,
       概要: sum.value, 希望納品日: d.希望納品日, 使用日: d.使用日,
       市場開場日: d.市場開場日, 補足事項: note.value,
       担当ID: $('#hTanto').value || d.担当ID, 依頼ID: d.依頼ID,
-      items: d.items
+      copied: d.copied, items: d.items
     };
   }
-
   function validItems(o) {
     return (o.items || []).filter(function (i) { return has(i.品名); });
   }
@@ -2379,7 +2636,8 @@ function renderOrderForm(P) {
       '確定登録', 'p'
     ).then(function (ok) {
       if (!ok) return;
-      submit(o, items, false);
+      // 依頼からコピーした発注は必ずコピー元と重複するので、重複チェックはしない
+      submit(o, items, !!o.copied);
     });
   }
 
@@ -2395,16 +2653,15 @@ function renderOrderForm(P) {
       items: items
     }).then(function (r) {
       if (r.needConfirm) { showDupWarning(r, function () { submit(o, items, true); }); return; }
-      toast((isReq ? '依頼' : '発注') + ' ' + r.id + ' を登録しました');
+      toast((isReq ? '依頼' : '発注') + 'を登録しました');
       afterCreate(r.id, o, items);
     });
   }
 
   /** 登録後のモーダル連鎖 */
   function afterCreate(id, o, items) {
-    reloadOrders().then(function () { /* カレンダー用データ更新 */ });
+    reloadOrders().catch(function () { });
     if (isReq) {
-      // 「この情報を仲卸発注にコピー編集しますか？」
       confirmModal('仲卸発注へコピー', 'この情報を仲卸発注にコピー編集しますか？', 'コピーする', 'n')
         .then(function (ok) {
           if (!ok) { back(); return; }
@@ -2413,11 +2670,11 @@ function renderOrderForm(P) {
             init: {
               日付: todayYmd(), 連絡形態: o.連絡形態, 概要: o.概要,
               市場開場日: o.希望納品日 || todayYmd(), 補足事項: o.補足事項,
-              担当ID: o.担当ID, 依頼ID: id,
+              担当ID: o.担当ID, 依頼ID: id, copied: true,
               items: items.map(function (i) {
                 return {
                   品名: i.品名, 産地: i.産地, メモ: i.メモ, 数量: i.数量, 単位: i.単位,
-                  マスタ区分: i.マスタ区分, マスタID: i.マスタID, 分類: i.分類
+                  マスタ区分: i.マスタ区分 || '青果', マスタID: i.マスタID, 分類: i.分類 || ''
                 };
               })
             }
@@ -2425,7 +2682,6 @@ function renderOrderForm(P) {
           toast('依頼内容をコピーしました。仲卸を選択して登録してください', 'info', 4200);
         });
     } else {
-      // 「発注書PDFを発行しますか？」
       confirmModal('発注書PDF', '発注書PDFを発行しますか？\n（金額の入っていない仲卸業者向けPDFです）', '発行する', 'n')
         .then(function (ok) {
           if (ok) issuePdf('発注書', { id: id });
@@ -2438,22 +2694,21 @@ function renderOrderForm(P) {
   function doCancel() {
     var o = collect();
     var items = validItems(o);
-    var dInp = el('input', { type: 'date', value: todayYmd(), style: 'width:100%;padding:10px;border:1px solid var(--line);border-radius:8px' });
-    var rInp = el('textarea', { style: 'width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;min-height:70px' });
-    rInp.value = o.概要 || (isReq ? '依頼概要' : '発注概要');
-    var body = el('div', null, [
-      el('div.fld', null, [el('label', { text: 'キャンセル日' }), dInp]),
-      el('div.fld', null, [el('label', { text: 'キャンセル理由' }), rInp]),
-      el('div.hint', { text: '※ステータス「X」で記録し、論理削除します（履歴は残ります）。' })
-    ]);
+    var dInp = autoScroll(el('input', { type: 'date', value: todayYmd(), style: 'width:100%;padding:10px;border:1px solid var(--line);border-radius:8px' }));
+    var rInp = autoScroll(el('textarea', { placeholder: 'キャンセル理由', style: 'width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;min-height:70px' }));
+    rInp.value = o.概要 || '';
     modal({
-      title: 'キャンセル', body: body, closable: false,
+      title: 'キャンセル', closable: false,
+      body: el('div', null, [
+        el('div.hint', { text: 'キャンセル日' }), dInp,
+        el('div.hint', { style: 'margin-top:8px', text: 'キャンセル理由' }), rInp,
+        el('div.hint', { style: 'margin-top:6px', text: '※ステータス「X」で記録し、論理削除します（履歴は残ります）。' })
+      ]),
       buttons: [
         { label: '戻る' },
         {
           label: 'キャンセル確定', cls: 'd', fn: function () {
             if (!has(o.取引先ID) || !items.length) {
-              // 未入力なら入力破棄だけ
               toast('入力を破棄しました', 'info');
               back();
               return;
@@ -2485,12 +2740,6 @@ function renderOrderForm(P) {
 
 function newItem() {
   return { マスタ区分: '青果', 分類: '', 品名: '', 産地: '', メモ: '', 数量: '', 単位: 'kg', マスタID: '' };
-}
-function dateLabel(s) {
-  if (!s) return '（未設定）';
-  var k = KOYOMI.info(s);
-  return mdw(s) + '　' + (k.rokuyo || '') + (k.holiday ? ' ' + k.holiday : '') +
-    (S.market[s] ? ' [' + S.market[s].label + ']' : '');
 }
 function sel(list, cur, onChange) {
   var s = el('select');
@@ -2568,7 +2817,7 @@ function openOrderEdit(type, id) {
 function askConfirmDate(h) {
   return new Promise(function (res) {
     var cur = h.確定日 || '';
-    var btn = el('button.btn.gh', {
+    var btn = el('button.btn.gh.fldbtn', {
       style: 'width:100%;text-align:left;padding:14px',
       text: cur ? dateLabel(cur) : '（空欄）タップしてカレンダーから選択',
       onclick: function () {
@@ -2618,56 +2867,47 @@ function renderOrderEdit(P) {
   var sc = el('div.scroll');
   main.appendChild(sc);
 
-  /* ---- 概要（編集可）＋ その他は文字表示（仕様書 p7-5） ---- */
-  var sumTa = el('textarea');
+  /* ---- 概要だけ編集可。他はラベル表示（テキスト欄をやめて縦を詰める） ---- */
+  var sumTa = autoScroll(el('textarea', {
+    placeholder: (isReq ? '依頼概要' : '発注概要') + '（編集可）'
+  }));
   sumTa.value = h.概要 || '';
   if (locked) sumTa.disabled = true;
 
-  function ro(label, val) {
-    return el('div.fld', null, [el('label', { text: label }), el('div.ro', { text: val || '－' })]);
-  }
-
   sc.appendChild(el('div.sec', null, [
     el('h3', {
-      text: h.type + ' ' + h.id + '　' +
+      text: (isReq ? '顧客納品' : '仲卸入荷') + '　' + mdw(h.日付) + '　' + (h.取引先名 || '') +
         (locked ? '【' + statusLabel({ type: h.type, ステータス: h.ステータス }) + '／閲覧のみ】' : '')
     }),
-    el('div.in', null, [
-      el('div.row', null, [
-        ro(h.type + '日', mdw(h.日付)),
-        ro('連絡形態', h.連絡形態)
-      ]),
-      ro(isReq ? '顧客' : '仲卸', h.取引先名 + (h.取引先ID !== '' ? '（ID:' + h.取引先ID + '）' : '')),
-      el('div.fld', null, [el('label', { text: isReq ? '依頼概要（編集可）' : '発注概要（編集可）' }), sumTa]),
+    el('div.in.tight', null, [
+      kvRow([kv(h.type + '日', mdw(h.日付)), kv('連絡形態', h.連絡形態)]),
+      kv(isReq ? '顧客' : '仲卸', h.取引先名, true),
       isReq
-        ? el('div.row', null, [ro('希望納品日', mdw(h.希望納品日)), ro('使用日', mdw(h.使用日))])
-        : el('div.row', null, [ro('市場開場日', mdw(h.市場開場日)), ro('補足事項', h.補足事項)]),
-      confirmDateFld(),
-      h.ステータス === 'X' ? el('div.row', null, [
-        ro('キャンセル日', mdw(h.キャンセル日)), ro('キャンセル理由', h.キャンセル理由)
-      ]) : null,
-      h.請求日 ? ro('請求日', mdw(h.請求日)) : null,
-      h.支払確認日 ? ro('支払確認日', mdw(h.支払確認日)) : null,
-      h.依頼ID && !isReq ? ro('紐付く依頼ID', h.依頼ID) : null,
-      h.発注ID && isReq ? ro('紐付く発注ID', h.発注ID) : null
+        ? kvRow([kv('希望納品日', mdw(h.希望納品日)), kv('使用日', mdw(h.使用日))])
+        : kvRow([kv('市場開場日', mdw(h.市場開場日)), kv('補足事項', h.補足事項)]),
+      h.ステータス === 'X'
+        ? kvRow([kv('キャンセル日', mdw(h.キャンセル日)), kv('理由', h.キャンセル理由)]) : null,
+      h.請求日 ? kv('請求日', mdw(h.請求日)) : null,
+      h.支払確認日 ? kv('支払確認日', mdw(h.支払確認日)) : null,
+      el('div.fld', { style: 'margin-top:8px' }, [sumTa]),
+      confirmDateFld()
     ])
   ]));
 
   var cdBtn;
   function confirmDateFld() {
-    cdBtn = el('button.btn.gh', {
-      style: 'width:100%;text-align:left',
-      text: h.確定日 ? dateLabel(h.確定日) : '（未入力）',
+    cdBtn = el('button.btn.gh.fldbtn', {
+      text: fieldText(h.確定日ラベル, h.確定日 ? dateLabel(h.確定日) : ''),
       onclick: function () {
         if (locked) return;
         pickDate(h.確定日ラベル, h.確定日 || todayYmd()).then(function (v) {
           if (v === null) return;
           h.確定日 = v;
-          cdBtn.textContent = v ? dateLabel(v) : '（未入力）';
+          cdBtn.textContent = fieldText(h.確定日ラベル, v ? dateLabel(v) : '');
         });
       }
     });
-    return el('div.fld', null, [el('label', { text: h.確定日ラベル }), cdBtn]);
+    return el('div.fld', null, [cdBtn]);
   }
 
   /* ---- 品名情報＋金額 ---- */
@@ -2690,7 +2930,7 @@ function renderOrderEdit(P) {
       });
       if (locked || manual) amtIn.disabled = true;
       amtIn.oninput = function () { it.金額 = amtIn.value === '' ? '' : num(amtIn.value); recalc(); };
-      it.__in = amtIn;
+      it.__in = autoScroll(amtIn);
       t.appendChild(el('tr', null, [
         el('td', null, [
           el('div', { style: 'font-weight:700', text: it.品名 }),
@@ -2741,6 +2981,7 @@ function renderOrderEdit(P) {
       value: (h.合計金額 === '' || h.合計金額 === null) ? '' : h.合計金額
     });
     if (locked) totalIn.disabled = true;
+    autoScroll(totalIn);
     totalIn.oninput = function () {
       // 合計に直接入力 → 各品名の金額は空欄になる（仕様書 p7-6）
       manual = true;
@@ -2969,7 +3210,7 @@ function renderBilling(mode) {
 
   sc.appendChild(el('div.sec', null, [
     el('h3', { text: label + '処理' }),
-    el('div.in', null, [
+    autoScrollAll(el('div.in', null, [
       el('div.fld', null, [
         el('label', { html: partnerLabel + '（未' + label + 'のみ表示）<span class="rq">*</span>' }), pSel
       ]),
@@ -2983,7 +3224,7 @@ function renderBilling(mode) {
           ? '※納品確定済みでまだ請求していない依頼が対象です。日付は依頼日で絞り込みます。'
           : '※入荷確定済みでまだ支払確認していない発注が対象です。日付は発注日で絞り込みます。'
       })
-    ])
+    ]))
   ]));
   sc.appendChild(host);
 
@@ -3249,7 +3490,7 @@ function loadGcalEvents(from, to) {
 }
 
 function renderGcal() {
-  setHeader('濵貞アプリ', { back: true });
+  setHeader('Googleカレンダー連携', { back: true });
   var main = clear($('#main'));
   var sc = el('div.scroll');
   main.appendChild(sc);
@@ -3328,7 +3569,7 @@ function renderGcal() {
  *  FAX写真 → 自動で依頼／発注の下書きを生成（Gemini）
  * ========================================================================== */
 function renderFax() {
-  setHeader('濵貞アプリ', { back: true });
+  setHeader('FAX写真から自動登録', { back: true });
   var main = clear($('#main'));
   var sc = el('div.scroll');
   main.appendChild(sc);
