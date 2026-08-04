@@ -23,7 +23,8 @@
   --safe-b:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0;height:100%;overscroll-behavior-y:none}
+html,body{margin:0;padding:0;height:100%;overscroll-behavior:none}
+@supports (height:100dvh){ html,body{height:100dvh} }
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",Meiryo,sans-serif;
   background:var(--bg); color:var(--txt); font-size:15px; line-height:1.45;
@@ -43,14 +44,14 @@ a{color:var(--today);text-decoration:none}
 }
 .hdr.req{background:var(--ocher)}
 .hdr.ord{background:var(--navy)}
-.hdr h1{font-size:17px;font-weight:700;margin:0;flex:0 0 auto;letter-spacing:.02em}
+.hdr h1{font-size:18.5px;font-weight:700;margin:0;flex:0 0 auto;letter-spacing:.02em}
 .hdr .sp{flex:1}
 .hdr button{
   color:#fff;background:rgba(255,255,255,.16);border-radius:6px;
-  padding:6px 10px;font-size:13px;font-weight:600;white-space:nowrap;
+  padding:7px 11px;font-size:14px;font-weight:700;white-space:nowrap;
 }
 .hdr button:active{background:rgba(255,255,255,.32)}
-.hdr .ico{font-size:19px;padding:5px 9px;line-height:1}
+.hdr .ico{font-size:21px;padding:5px 10px;line-height:1}
 .hdr select{
   background:rgba(255,255,255,.16);color:#fff;border:none;border-radius:6px;
   padding:5px 6px;font-size:13px;max-width:38vw;
@@ -67,8 +68,8 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
 }
 .toast{
   background:var(--ok);color:#fff;padding:7px 16px;border-radius:16px;
-  font-size:13px;font-weight:600;box-shadow:0 3px 10px rgba(0,0,0,.25);
-  animation:tin .18s ease-out; text-align:center;
+  font-size:13.5px;font-weight:600;box-shadow:0 3px 10px rgba(0,0,0,.25);
+  animation:tin .18s ease-out; text-align:center; white-space:pre-line; line-height:1.5;
 }
 .toast.err{background:var(--err)} .toast.warn{background:var(--warn)} .toast.info{background:#455a75}
 @keyframes tin{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
@@ -94,44 +95,64 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
 }
 
 /* ---------- Calendar ---------- */
-.calwrap{flex:1;overflow:hidden;position:relative;touch-action:pan-y}
+.calwrap{flex:1;overflow:hidden;position:relative;touch-action:none;overscroll-behavior:contain}
 .caltrack{display:flex;width:300%;height:100%;transition:transform .26s cubic-bezier(.25,.8,.3,1)}
 .caltrack.nt{transition:none}
 .calpane{width:33.3333%;height:100%;display:flex;flex-direction:column;overflow:hidden}
 .calbar{
   display:flex;align-items:center;justify-content:space-between;background:#dfe6f0;
-  padding:3px 6px;font-weight:700;font-size:14px;color:var(--navy);border-bottom:1px solid var(--line);
+  padding:4px 6px;font-weight:700;font-size:16.5px;color:var(--navy);border-bottom:1px solid var(--line);
 }
-.calbar button{background:#fff;border:1px solid var(--line);border-radius:5px;padding:3px 9px;font-size:12px;font-weight:700;color:var(--navy)}
+.calbar button{background:#fff;border:1px solid var(--line);border-radius:6px;padding:5px 12px;font-size:14px;font-weight:700;color:var(--navy)}
 
 /* 2週表示: 縦に曜日、横に2週 */
-.g2{flex:1;display:grid;grid-template-columns:22px 1fr 1fr;grid-auto-rows:1fr;background:var(--line);gap:1px;overflow:hidden}
-.g2 .dw{background:#eef2f7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--sub);writing-mode:vertical-rl}
+.g2{flex:1;min-height:0;display:grid;grid-template-columns:26px 1fr 1fr;
+     grid-template-rows:repeat(7,minmax(0,1fr));background:var(--line);gap:1px;overflow:hidden}
+.g2 .dw{background:#eef2f7;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--sub);writing-mode:vertical-rl}
 /* 月表示 */
-.gm{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.gm{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .gmhead{display:grid;grid-template-columns:repeat(7,1fr);background:#eef2f7;border-bottom:1px solid var(--line)}
-.gmhead div{text-align:center;font-size:11px;font-weight:700;color:var(--sub);padding:2px 0}
+.gmhead div{text-align:center;font-size:13.5px;font-weight:700;color:var(--sub);padding:3px 0}
 .gmhead div:nth-child(6){color:var(--sat-t)} .gmhead div:nth-child(7){color:var(--sun-t)}
-.gmbody{flex:1;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;background:var(--line);gap:1px;overflow:hidden}
+.gmbody{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,1fr);
+        grid-auto-rows:minmax(0,1fr);background:var(--line);gap:1px;overflow:hidden}
 
-.cell{background:#fff;padding:1px 2px;overflow:hidden;display:flex;flex-direction:column;min-height:0;position:relative;touch-action:manipulation}
+.cell{background:#fff;padding:2px 3px;overflow:hidden;display:flex;flex-direction:column;min-height:0;position:relative;touch-action:none}
 .cell.sun{background:var(--sun)} .cell.sat{background:var(--sat)}
 .cell.hol{background:var(--sun)} .cell.off{background:var(--sun)}
 .cell.out{background:#f4f6f9;opacity:.5}
 .cell.sel{box-shadow:inset 0 0 0 2px var(--today);z-index:2}
-.cell.today .dn{background:var(--today);color:#fff;border-radius:4px;padding:0 3px}
-.crow{display:flex;align-items:flex-start;justify-content:space-between;gap:2px;line-height:1.15}
-.dn{font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap}
+.cell.today .dn{background:var(--today);color:#fff;border-radius:5px;padding:0 4px}
+.crow{display:flex;align-items:baseline;justify-content:space-between;gap:2px;line-height:1.1}
+.dn{font-weight:700;color:var(--navy);white-space:nowrap}
 .cell.sun .dn,.cell.hol .dn{color:var(--sun-t)} .cell.sat .dn{color:var(--sat-t)}
-.rk{font-size:9px;color:#8d97a6;white-space:nowrap;transform:scale(.92);transform-origin:right top}
-.hn{font-size:9px;color:var(--sun-t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
-.ev{font-size:9.5px;color:#2f6fd0;background:#eaf1fd;border-radius:2px;padding:0 2px;margin-top:1px;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
-.chips{margin-top:auto;display:flex;flex-wrap:wrap;gap:2px;padding-top:1px}
+.rk{color:#7d8796;white-space:nowrap;font-weight:600}
+.hn{color:var(--sun-t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+.ev{color:#245fbe;background:#e6effc;border-radius:3px;padding:0 3px;margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;padding-top:2px;flex:0 0 auto}
+.evs{flex:1 1 auto;min-height:0;overflow:hidden;padding-top:1px}
 .chip{
-  width:16px;height:16px;border-radius:50%;color:#fff;font-size:10px;font-weight:700;
+  border-radius:50%;color:#fff;font-weight:700;
   display:flex;align-items:center;justify-content:center;line-height:1;flex:0 0 auto;
 }
+
+/* --- 2週表示はセルが広いので最大サイズ --- */
+.g2 .dn{font-size:21px}
+.g2 .rk{font-size:13.5px}
+.g2 .hn{font-size:13px}
+.g2 .ev{font-size:13.5px}
+.g2 .chips{gap:4px}
+.g2 .chip{width:28px;height:28px;font-size:16.5px}
+
+/* --- 月表示はセルが狭いので控えめに --- */
+.gmbody .dn{font-size:18px}
+.gmbody .rk{font-size:11px}
+.gmbody .hn{font-size:10.5px}
+.gmbody .ev{font-size:10.5px;padding:0 2px;margin-top:1px}
+.gmbody .chips{gap:2px}
+.gmbody .chip{width:20px;height:20px;font-size:12.5px}
+.gmbody .cell.out .rk{display:none}          /* 前後月は六曜を省いて日付を大きく見せる */
 .chip.req{background:var(--ocher)} .chip.ord{background:var(--navy)}
 .chip.mkt{background:#3d9a5f} .chip.mkt2{background:#7ab894}
 .chip.off{background:#a0a8b4}
@@ -147,6 +168,10 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
 .fab.g{background:var(--ok)} .fab.r{background:#c62828} .fab.gray{background:#78849b}
 .fab.s2{right:82px} .fab.s3{right:150px}
 .fab:active{transform:scale(.94)}
+/* カレンダー画面のFABは日曜の行に重なるので、小さめ＋半透明にして下の内容が見えるようにする */
+.calfab{width:48px;height:48px;font-size:24px;opacity:.9;bottom:calc(10px + var(--safe-b))}
+.calfab.l{left:10px;font-size:19px}
+.calfab:active{opacity:1}
 .fabrow{position:absolute;right:14px;bottom:calc(16px + var(--safe-b));display:flex;gap:12px;z-index:30}
 .fabrow .fab{position:static;right:auto;bottom:auto}
 
@@ -291,6 +316,7 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
       <button class="mi" data-nav="gcal"><span class="em">📅</span>Googleカレンダー連携</button>
       <button class="mi" data-nav="fax"><span class="em">📷</span>FAX写真から自動登録</button>
       <button class="mi" data-nav="log"><span class="em">📋</span>操作履歴（監査ログ）</button>
+      <button class="mi" data-nav="fullscreen"><span class="em">⛶</span>フルスクリーン切替</button>
       <div class="foot">
         <div id="drwMe"></div>
         <div id="drwVer" style="margin-top:4px"></div>
@@ -707,7 +733,7 @@ var CONFIG = {
   /* 2週表示の並び  0 = 今週＋来週（既定） / 1 = 先週＋今週 */
   TWO_WEEK_BACK: 0,
 
-  VERSION: '1.0.1'
+  VERSION: '1.0.2'
 };
 
 /* ==========================================================================
@@ -916,6 +942,44 @@ function pickDate(title, initial) {
 }
 
 /* ==========================================================================
+ *  フルスクリーン（ログイン後にアドレスバーを隠して全画面にする）
+ *   ※ requestFullscreen は「ユーザー操作の直後」でないと拒否されるため、
+ *     ログインボタンの click ハンドラの先頭で呼ぶ。
+ * ========================================================================== */
+function fsElement() {
+  return document.fullscreenElement || document.webkitFullscreenElement ||
+    document.mozFullScreenElement || document.msFullscreenElement || null;
+}
+function goFullscreen() {
+  try {
+    if (fsElement()) return true;
+    var e = document.documentElement;
+    var fn = e.requestFullscreen || e.webkitRequestFullscreen ||
+      e.mozRequestFullScreen || e.msRequestFullscreen;
+    if (!fn) return false;
+    var r = fn.call(e, { navigationUI: 'hide' });
+    if (r && r.catch) r.catch(function () { });
+    return true;
+  } catch (err) { return false; }
+}
+function exitFullscreen() {
+  try {
+    var fn = document.exitFullscreen || document.webkitExitFullscreen ||
+      document.mozCancelFullScreen || document.msExitFullscreen;
+    if (fn && fsElement()) {
+      var r = fn.call(document);
+      if (r && r.catch) r.catch(function () { });
+    }
+  } catch (err) { /* noop */ }
+}
+function toggleFullscreen() {
+  if (fsElement()) { exitFullscreen(); toast('フルスクリーンを解除しました', 'info'); }
+  else if (!goFullscreen()) {
+    toast('この端末では全画面にできません。ホーム画面に追加するとアドレスバーが消えます', 'warn', 5000);
+  }
+}
+
+/* ==========================================================================
  *  暦ラッパ（六曜・祝日・自分の休日・市場開催日）
  * ========================================================================== */
 var KOYOMI = {
@@ -1084,6 +1148,8 @@ function doLogin() {
   var id = $('#lgTanto').value, pw = $('#lgPw').value;
   if (!id) { $('#lgMsg').textContent = '担当者を選択してください'; return; }
   if (!pw) { $('#lgMsg').textContent = 'パスワードを入力してください'; return; }
+  // ★ユーザー操作の直後でなければブラウザが拒否するので、通信前にここで要求する
+  goFullscreen();
   var btn = $('#lgBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> 認証中…';
@@ -1244,10 +1310,10 @@ function renderCalendar() {
   main.appendChild(wrap);
 
   // FAB
-  main.appendChild(el('button.fab.l', {
+  main.appendChild(el('button.fab.l.calfab', {
     text: '📝', title: '未完了リスト', onclick: showPending
   }));
-  main.appendChild(el('button.fab', {
+  main.appendChild(el('button.fab.calfab', {
     text: '＋', title: '新規登録', onclick: function () { askNewKind(null); }
   }));
 
@@ -1261,15 +1327,23 @@ function layoutPanes(wrap, track) {
   clear(track);
   track.classList.add('nt');
   track.style.width = (w * 3) + 'px';
-  var anchors = paneAnchors();
-  anchors.forEach(function (a) {
+  paneAnchors().forEach(function (a) {
     var p = buildPane(a);
     p.style.width = w + 'px';
     track.appendChild(p);
   });
-  track.style.transform = 'translateX(' + (-w) + 'px)';
-  requestAnimationFrame(function () { track.classList.remove('nt'); });
   track.__w = w;
+  track.__busy = false;
+  setX(track, -w);
+  // 1フレーム後にトランジションを戻す（初期描画でアニメーションさせない）
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () { track.classList.remove('nt'); });
+  });
+}
+
+/** transform をピクセルで設定（サブピクセルのブレを防ぐため整数に丸める） */
+function setX(track, px) {
+  track.style.transform = 'translate3d(' + Math.round(px) + 'px,0,0)';
 }
 
 function paneAnchors() {
@@ -1285,58 +1359,113 @@ function paneAnchors() {
   return [addDays(m, -14), m, addDays(m, 14)];
 }
 
-/** 前後ページへ移動 */
-function movePage(dir) {
+/** 基準日を dir ページぶん進める */
+function shiftAnchor(dir) {
   var a = S.anchor || new Date();
   if (S.view === 'calm') {
     var last = new Date(a.getFullYear(), a.getMonth() + dir + 1, 0).getDate();
-    S.anchor = new Date(a.getFullYear(), a.getMonth() + dir, Math.min(a.getDate(), last));
-  } else {
-    S.anchor = addDays(a, dir * 14);
+    return new Date(a.getFullYear(), a.getMonth() + dir, Math.min(a.getDate(), last));
   }
-  var wrap = $('.calwrap'), track = $('.caltrack');
-  if (!wrap || !track) return;
-  var w = track.__w || wrap.clientWidth;
-  track.style.transform = 'translateX(' + (-w - dir * w) + 'px)';
-  setTimeout(function () { layoutPanes(wrap, track); ensureVisibleData(); }, 270);
+  return addDays(a, dir * 14);
 }
 
-/** 横スワイプ（横に流れて次頁が次第に表示される） */
+/**
+ * 前後ページへ移動。
+ *  ①目的位置までスライド → ②アニメーション後に「反対側の1枚を捨てて進行方向に1枚足す」
+ *  だけにして、3枚を作り直さない。これで改ページ時のちらつき／巻き戻りが起きない。
+ */
+function movePage(dir) {
+  var wrap = $('.calwrap'), track = $('.caltrack');
+  if (!wrap || !track) return;
+  if (track.__busy) return;                       // 連打・多重アニメーション防止
+  var w = track.__w || wrap.clientWidth;
+  track.__busy = true;
+
+  track.classList.remove('nt');
+  setX(track, -w - dir * w);                      // ①スライド
+
+  var done = false;
+  function finish() {
+    if (done) return;
+    done = true;
+    track.removeEventListener('transitionend', onEnd);
+
+    S.anchor = shiftAnchor(dir);                  // ②並べ替え（無音）
+    var anchors = paneAnchors();
+    track.classList.add('nt');
+    if (dir > 0) {
+      if (track.firstChild) track.removeChild(track.firstChild);
+      var np = buildPane(anchors[2]);
+      np.style.width = w + 'px';
+      track.appendChild(np);
+    } else {
+      if (track.lastChild) track.removeChild(track.lastChild);
+      var pp = buildPane(anchors[0]);
+      pp.style.width = w + 'px';
+      track.insertBefore(pp, track.firstChild);
+    }
+    setX(track, -w);
+    void track.offsetWidth;                       // 強制リフロー（ここで確定させる）
+    requestAnimationFrame(function () {
+      track.classList.remove('nt');
+      track.__busy = false;
+    });
+    ensureVisibleData();
+  }
+  function onEnd(e) { if (e.target === track && e.propertyName === 'transform') finish(); }
+  track.addEventListener('transitionend', onEnd);
+  setTimeout(finish, 420);                        // transitionend が来ない端末の保険
+}
+
+/** 横スワイプ（指の動きに追従して横に流し、離した時にページ送り） */
 function bindSwipe(wrap, track) {
-  var x0 = 0, y0 = 0, dx = 0, drag = false, lock = null;
-  wrap.addEventListener('touchstart', function (e) {
-    if (e.touches.length !== 1) return;
-    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  var x0 = 0, y0 = 0, dx = 0, drag = false, lock = null, id = null;
+
+  function start(e) {
+    if (track.__busy) return;
+    if (e.touches && e.touches.length !== 1) return;
+    var t = e.touches ? e.touches[0] : e;
+    id = (e.touches && e.touches[0]) ? e.touches[0].identifier : null;
+    x0 = t.clientX; y0 = t.clientY;
     dx = 0; drag = true; lock = null;
     track.classList.add('nt');
-  }, { passive: true });
-  wrap.addEventListener('touchmove', function (e) {
+  }
+  function move(e) {
     if (!drag) return;
-    var cx = e.touches[0].clientX, cy = e.touches[0].clientY;
-    var ax = cx - x0, ay = cy - y0;
+    var t = e.touches ? e.touches[0] : e;
+    if (!t) return;
+    var ax = t.clientX - x0, ay = t.clientY - y0;
     if (lock === null) {
-      if (Math.abs(ax) < 8 && Math.abs(ay) < 8) return;
-      lock = (Math.abs(ax) > Math.abs(ay) * 1.2) ? 'x' : 'y';
+      if (Math.abs(ax) < 10 && Math.abs(ay) < 10) return;
+      lock = (Math.abs(ax) > Math.abs(ay)) ? 'x' : 'y';
+      if (lock === 'y') { drag = false; track.classList.remove('nt'); return; }
     }
     if (lock !== 'x') return;
-    dx = ax;
     var w = track.__w || wrap.clientWidth;
-    track.style.transform = 'translateX(' + (-w + dx) + 'px)';
-  }, { passive: true });
-  function end() {
-    if (!drag) return;
-    drag = false;
-    track.classList.remove('nt');
-    var w = track.__w || wrap.clientWidth;
-    if (lock === 'x' && Math.abs(dx) > Math.min(70, w * 0.18)) {
-      movePage(dx < 0 ? 1 : -1);
-    } else {
-      track.style.transform = 'translateX(' + (-w) + 'px)';
-    }
-    dx = 0;
+    // 端で引っぱりすぎないように減衰させる
+    dx = Math.max(-w * 0.98, Math.min(w * 0.98, ax));
+    setX(track, -w + dx);
   }
+  function end() {
+    if (!drag) { return; }
+    drag = false;
+    var w = track.__w || wrap.clientWidth;
+    track.classList.remove('nt');
+    var moved = dx;
+    dx = 0;
+    if (lock === 'x' && Math.abs(moved) > Math.min(64, w * 0.16)) {
+      movePage(moved < 0 ? 1 : -1);
+    } else {
+      setX(track, -w);                            // 戻す
+    }
+    lock = null;
+  }
+
+  wrap.addEventListener('touchstart', start, { passive: true });
+  wrap.addEventListener('touchmove', move, { passive: true });
   wrap.addEventListener('touchend', end);
   wrap.addEventListener('touchcancel', end);
+  void id;
 }
 
 /** 1ページ分を組み立てる */
@@ -1399,22 +1528,17 @@ function buildCell(day, outside, compact) {
 
   var cell = el(cls, { 'data-date': day });
 
+  // 月表示は幅が狭いので「日」だけ（月初のみ m/d）にして文字を大きく見せる
+  var dnum = Number(day.slice(8, 10));
   cell.appendChild(el('div.crow', null, [
-    el('span.dn', { text: md(day) }),
+    el('span.dn', { text: (compact && dnum !== 1) ? String(dnum) : md(day) }),
     el('span.rk', { text: k.rokuyo || '' })
   ]));
-  if (isHol && !compact) cell.appendChild(el('div.hn', { text: k.holiday }));
-  else if (isHol && compact) cell.appendChild(el('div.hn', { text: k.holiday }));
+  if (isHol) cell.appendChild(el('div.hn', { text: k.holiday }));
 
-  // Googleカレンダー（最大2行 / 月表示は時間なし）
-  var evs = (S.gcal.events[day] || []).slice(0, 2);
-  evs.forEach(function (ev) {
-    var t = '';
-    if (!compact && !ev.allDay && ev.start) t = Number(ev.start.slice(11, 13)) + '時 ';
-    cell.appendChild(el('div.ev', { text: t + ev.summary, title: ev.summary }));
-  });
-
-  // ステータスアイコン
+  // ステータスアイコンを日付の直下に置く。
+  // （右下・左下のFABが必ず居座るため、業務上いちばん重要なアイコンを上に、
+  //   隠れても困らないGoogle予定を下に配置している）
   var chips = el('div.chips');
   var marks = (S.marks[day] || []).slice(0, 4);
   marks.forEach(function (mk) {
@@ -1426,7 +1550,19 @@ function buildCell(day, outside, compact) {
       { text: mkt.label, title: '市場開場日' + (S.marketEstimated ? '（推定）' : '') }));
   }
   if (isOff) chips.appendChild(el('div.chip.off', { text: '休', title: '担当の休み' }));
-  cell.appendChild(chips);
+  if (chips.childNodes.length) cell.appendChild(chips);
+
+  // Googleカレンダー（最大2行 / 月表示は時間なし）
+  var evs = (S.gcal.events[day] || []).slice(0, 2);
+  if (evs.length) {
+    var evBox = el('div.evs');
+    evs.forEach(function (ev) {
+      var t = '';
+      if (!compact && !ev.allDay && ev.start) t = Number(ev.start.slice(11, 13)) + '時 ';
+      evBox.appendChild(el('div.ev', { text: t + ev.summary, title: ev.summary }));
+    });
+    cell.appendChild(evBox);
+  }
 
   bindCellTap(cell, day);
   return cell;
@@ -1558,11 +1694,16 @@ function statusLabel(r) {
   return { '2': '発注済', '3': '入荷確定', '6': '支払確認済' }[s] || s;
 }
 
-/** カレンダー再描画（データはそのまま） */
+/** カレンダー再描画（データはそのまま。位置は動かさない） */
 function refreshCalendar() {
   if (S.nav[S.nav.length - 1] !== 'cal') return;
   var wrap = $('.calwrap'), track = $('.caltrack');
-  if (wrap && track) layoutPanes(wrap, track);
+  if (!wrap || !track) return;
+  if (track.__busy) {                     // 改ページ中は終わってから
+    setTimeout(refreshCalendar, 260);
+    return;
+  }
+  layoutPanes(wrap, track);
 }
 
 /** 表示範囲のデータが無ければ取得 */
@@ -3241,11 +3382,34 @@ function renderFax() {
     clear(host).appendChild(el('div.sec', null, [
       el('div.empty', null, [el('span.spin.dk'), ' AIが読み取っています…（10〜30秒）'])
     ]));
-    api('ocr.fax', { imageBase64: b64, mimeType: mime, type: type, hint: hintTa.value })
+    api('ocr.fax', { imageBase64: b64, mimeType: mime, type: type, hint: hintTa.value }, true)
       .then(function (d) { showDraft(d); })
-      .catch(function (e) {
-        clear(host).appendChild(el('div.sec', null, [el('div.empty', { text: '読み取りに失敗しました: ' + e.message })]));
-      });
+      .catch(function (e) { showError(e); });
+  }
+
+  /** 読み取り失敗の表示（Gemini混雑時は待って再試行を促す） */
+  function showError(e) {
+    var busy = /混雑|503|overload/i.test(e.message || '');
+    var rate = /レート|429/.test(e.message || '');
+    clear(host);
+    var box = el('div.in');
+    box.appendChild(el('div.wbox' + (busy || rate ? '' : '.other'), null, [
+      el('div.wt', { text: busy ? '⚠ Gemini側が混み合っています' : (rate ? '⚠ 無料枠の上限に達しました' : '⚠ 読み取りに失敗しました') }),
+      el('div.wl', { style: 'white-space:pre-wrap', text: e.message || '' })
+    ]));
+    if (busy || rate) {
+      box.appendChild(el('div.hint', {
+        text: 'Geminiの無料枠は時間帯によって混み合います。1〜2分待ってから下のボタンでもう一度お試しください。'
+      }));
+    }
+    box.appendChild(el('button.btn.p', {
+      style: 'width:100%;margin-top:8px', text: '🔁 もう一度読み取る', onclick: run
+    }));
+    box.appendChild(el('button.btn', {
+      style: 'width:100%;margin-top:6px', text: '手入力で登録画面へ進む',
+      onclick: function () { openOrderForm(type, { 日付: todayYmd() }); }
+    }));
+    host.appendChild(el('div.sec', null, [el('h3', { text: '読み取り結果' }), box]));
   }
 
   function showDraft(d) {
@@ -3403,6 +3567,7 @@ function boot() {
         case 'gcal': navFromMenu('gcal'); break;
         case 'fax': navFromMenu('fax'); break;
         case 'log': navFromMenu('log'); break;
+        case 'fullscreen': toggleFullscreen(); break;
       }
     });
   });
