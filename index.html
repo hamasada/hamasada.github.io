@@ -746,7 +746,7 @@ var CONFIG = {
   /* 2週表示の並び  0 = 今週＋来週（既定） / 1 = 先週＋今週 */
   TWO_WEEK_BACK: 0,
 
-  VERSION: '1.0.3'
+  VERSION: '1.0.4'
 };
 
 /* ==========================================================================
@@ -1277,8 +1277,14 @@ function bootstrap() {
     bar.textContent = '最新データを確認中…';
   }
 
-  // ② サーバから最新を1回で取得
-  return API.call('sync.boot', { from: r.from, to: r.to }).then(function (d) {
+  // ② サーバから最新を1回で取得（GASが古い場合は旧方式に自動フォールバック）
+  return API.call('sync.boot', { from: r.from, to: r.to }).catch(function (e) {
+    if (e.code === 'NO_ACTION') {
+      toast('GASの再デプロイがまだのようです。旧方式で読み込みます', 'warn', 5000);
+      return legacyBoot(r);
+    }
+    throw e;
+  }).then(function (d) {
     applyBoot(d);
     LS.set('boot', {
       me: d.me, tantos: d.tantos, customers: d.customers, brokers: d.brokers,
@@ -1323,16 +1329,55 @@ function loadItemsFromCache() {
   return !!(c && c.seika);
 }
 
-/** 品名マスタの同期（バージョンが同じならサーバは本体を返さない） */
+/**
+ * 旧方式（sync.manifest ＋ sync.chunk）での起動データ取得。
+ *  GAS を再デプロイする前に index.html を更新してしまっても動くようにするための保険。
+ */
+function legacyBoot(r) {
+  var out = { tantos: [], customers: [], brokers: [], offDays: [] };
+  return API.call('sync.manifest', {}).then(function (mf) {
+    out.me = mf.me;
+    var names = (mf.chunks || []).filter(function (n) { return n !== 'seika' && n !== 'suisan'; });
+    return names.reduce(function (pr, name) {
+      return pr.then(function () {
+        return API.call('sync.chunk', { name: name, from: r.from, to: r.to }).then(function (d) {
+          if (d.tantos) out.tantos = d.tantos;
+          if (d.customers) out.customers = d.customers;
+          if (d.brokers) out.brokers = d.brokers;
+          if (d.market) out.market = d.market;
+          if (d.orders) out.orders = d.orders;
+        }).catch(function () { });
+      });
+    }, Promise.resolve());
+  }).then(function () {
+    return API.call('off.list', {}).then(function (d) { out.offDays = d.days || []; }).catch(function () { });
+  }).then(function () { return out; });
+}
+
+/**
+ * 品名マスタの同期（バージョンが同じならサーバは本体を返さない）。
+ *  sync.items が無い古いデプロイでは master.items にフォールバックする。
+ */
 function syncItems(serverVersion) {
   var have = loadItemsFromCache();
   if (have && serverVersion && S.itemsVersion === serverVersion) return Promise.resolve(false);
   return API.call('sync.items', { version: S.itemsVersion || '' }).then(function (d) {
     if (d.unchanged) return false;
-    S.seika = d.seika; S.suisan = d.suisan; S.itemsVersion = d.version;
-    LS.set('items', { version: d.version, seika: d.seika, suisan: d.suisan });
+    applyItems(d.version, d.seika, d.suisan);
     return true;
-  }).catch(function () { return false; });
+  }).catch(function (e) {
+    if (e.code !== 'NO_ACTION') return false;
+    // 旧デプロイ向けフォールバック
+    return API.call('master.items', {}).then(function (d) {
+      applyItems('legacy', d.master['青果'], d.master['水産']);
+      return true;
+    }).catch(function () { return false; });
+  });
+}
+function applyItems(version, seika, suisan) {
+  if (!seika || !suisan) return;
+  S.seika = seika; S.suisan = suisan; S.itemsVersion = version || '';
+  LS.set('items', { version: S.itemsVersion, seika: seika, suisan: suisan });
 }
 
 /** 品名マスタが必要な画面に入る前に、確実に読み込んでおく */
@@ -2314,6 +2359,18 @@ function catRows(kind, cat) {
   var m = masterOf(kind);
   return (m && m.byCat && m.byCat[cat]) || [];
 }
+/** 分類を選んでいないときは、その区分（青果／水産）の全品名を五十音順で返す */
+function allRows(kind) {
+  var m = masterOf(kind);
+  if (!m || !m.byCat) return [];
+  var out = [];
+  Object.keys(m.byCat).forEach(function (c) { out = out.concat(m.byCat[c]); });
+  out.sort(function (a, b) {
+    var ka = kana(a.name), kb = kana(b.name);
+    return ka < kb ? -1 : (ka > kb ? 1 : 0);
+  });
+  return out;
+}
 /** 品名の重複を除いたリスト（元データが五十音順なので順序はそのまま） */
 function uniqNames(rows) {
   var seen = {}, out = [];
@@ -2479,13 +2536,8 @@ function renderOrderForm(P) {
     renumber();
   }
 
-  if (!S.seika || !S.suisan) {
-    itemsHost.appendChild(el('div.empty', null, [el('span.spin.dk'), ' 品名マスタを読み込み中…']));
-    itemsHost.appendChild(addBtn);
-    ensureItems().then(drawItems);
-  } else {
-    drawItems();
-  }
+  drawItems();
+  if (!S.seika || !S.suisan) ensureItems().then(drawItems);
 
   /* ---- 品名カード ---- */
   function itemCard(it) {
@@ -2521,14 +2573,14 @@ function renderOrderForm(P) {
     });
     card.appendChild(tabs);
 
-    // 分類
+    // 分類（未選択＝その区分の全品名から選べる）
     var cats = catList(it.マスタ区分);
     if (cats.length) {
       var cbox = el('div.cats');
       cats.forEach(function (c) {
         cbox.appendChild(el('button' + (it.分類 === c ? '.on' : ''), {
           text: c, onclick: function () {
-            it.分類 = (it.分類 === c ? '' : c);
+            it.分類 = (it.分類 === c ? '' : c);      // もう一度押すと全件に戻る
             redraw(card);
           }
         }));
@@ -2539,42 +2591,61 @@ function renderOrderForm(P) {
     var nameIn = el('input', { type: 'text', placeholder: '品名（必須）', value: it.品名 || '', 'data-t': 'itemName' });
     var originIn = el('input', { type: 'text', placeholder: '産地', value: it.産地 || '' });
 
-    // 品名を選択 / 産地を選択（どちらも重複なし）
-    var rows = it.分類 ? catRows(it.マスタ区分, it.分類) : [];
-    if (rows.length) {
-      var nSel = el('select', { 'data-t': 'itemMaster' });
-      var oSel = el('select', { 'data-t': 'itemOrigin' });
+    /* --- 品名を選択 / 産地を選択（★常に表示。分類を選ぶと絞り込まれる） --- */
+    var rows = it.分類 ? catRows(it.マスタ区分, it.分類) : allRows(it.マスタ区分);
+    var nSel = el('select', { 'data-t': 'itemMaster' });
+    var oSel = el('select', { 'data-t': 'itemOrigin' });
+
+    function fillName() {
       var names = uniqNames(rows);
-      clear(nSel).appendChild(el('option', { value: '', text: '品名を選択…（' + names.length + '件）' }));
+      clear(nSel);
+      nSel.appendChild(el('option', {
+        value: '',
+        text: rows.length
+          ? '品名を選択…（' + names.length + '件' + (it.分類 ? '／' + it.分類 : '／全' + it.マスタ区分) + '）'
+          : '品名マスタを読込中…'
+      }));
       names.forEach(function (n) { nSel.appendChild(el('option', { value: n, text: n })); });
       nSel.value = names.indexOf(it.品名) >= 0 ? it.品名 : '';
+      return names;
+    }
+    function fillOrigin() {
+      var ol = uniqOrigins(rows, nSel.value || '');
+      clear(oSel);
+      oSel.appendChild(el('option', {
+        value: '',
+        text: ol.length ? '産地を選択…（' + ol.length + '件）' : '産地を選択…'
+      }));
+      ol.forEach(function (o) { oSel.appendChild(el('option', { value: o, text: o })); });
+      oSel.value = ol.indexOf(it.産地) >= 0 ? it.産地 : '';
+      return ol;
+    }
+    fillName();
+    fillOrigin();
+    nSel.onchange = function () {
+      it.品名 = nSel.value;
+      nameIn.value = it.品名;
+      var ol = fillOrigin();
+      if (ol.length === 1) { it.産地 = ol[0]; oSel.value = ol[0]; originIn.value = ol[0]; }
+      it.マスタID = findMasterId(rows, it.品名, it.産地);
+    };
+    oSel.onchange = function () {
+      it.産地 = oSel.value;
+      originIn.value = it.産地;
+      it.マスタID = findMasterId(rows, it.品名, it.産地);
+    };
+    card.appendChild(el('div.row', null, [
+      el('div.fld', null, [nSel]), el('div.fld', null, [oSel])
+    ]));
 
-      function fillOrigin() {
-        var ol = uniqOrigins(rows, nSel.value || '');
-        clear(oSel).appendChild(el('option', { value: '', text: '産地を選択…（' + ol.length + '件）' }));
-        ol.forEach(function (o) { oSel.appendChild(el('option', { value: o, text: o })); });
-        oSel.value = ol.indexOf(it.産地) >= 0 ? it.産地 : '';
-        return ol;
-      }
-      fillOrigin();
-      nSel.onchange = function () {
-        it.品名 = nSel.value;
-        nameIn.value = it.品名;
-        var ol = fillOrigin();
-        if (ol.length === 1) { it.産地 = ol[0]; oSel.value = ol[0]; originIn.value = ol[0]; }
-        it.マスタID = findMasterId(rows, it.品名, it.産地);
-      };
-      oSel.onchange = function () {
-        it.産地 = oSel.value;
-        originIn.value = it.産地;
-        it.マスタID = findMasterId(rows, it.品名, it.産地);
-      };
-      card.appendChild(el('div.row', null, [
-        el('div.fld', null, [nSel]), el('div.fld', null, [oSel])
-      ]));
+    // マスタ未読込なら取り込んでからこのカードだけ作り直す
+    if (!rows.length) {
+      ensureItems().then(function () {
+        if (card.parentNode === itemsHost) redraw(card);
+      });
     }
 
-    // 品名 / 産地（手入力）
+    /* --- 品名 / 産地（手入力。コンボと同じサイズで並べる） --- */
     nameIn.oninput = function () { it.品名 = nameIn.value; };
     originIn.oninput = function () { it.産地 = originIn.value; };
     card.appendChild(el('div.row', null, [
