@@ -197,7 +197,8 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
 #drawer .foot{margin-top:auto;padding:12px 16px;font-size:11px;color:var(--sub);border-top:1px solid var(--line)}
 
 /* ---------- Sheets / modal ---------- */
-.modal{position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;padding:16px}
+/* ログイン画面(#vLogin z-index:300)の上にも出せるようにしておく（接続診断など） */
+.modal{position:fixed;inset:0;z-index:350;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal .mask{position:absolute;inset:0;background:rgba(0,0,0,.45)}
 .mbox{
   position:relative;background:#fff;border-radius:12px;width:100%;max-width:440px;max-height:86vh;
@@ -344,10 +345,14 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
     <div class="loginbox">
       <h2>ログイン</h2>
       <p>担当者を選択し、パスワードを入力してください</p>
-      <select id="lgTanto"><option value="">担当者を選択…</option></select>
-      <input id="lgPw" type="password" inputmode="numeric" placeholder="パスワード" autocomplete="off">
+      <select id="lgTanto"><option value="">担当者を読込み中…</option></select>
+      <input id="lgPw" type="password" inputmode="numeric" placeholder="パスワード" autocomplete="off" autofocus>
       <button id="lgBtn">ログイン</button>
       <div id="lgMsg" class="hint" style="text-align:center;color:#c62828;min-height:18px"></div>
+      <div id="lgTools" class="btnrow hide" style="margin-top:6px">
+        <button class="btn s" id="lgReload" style="flex:1">🔄 もう一度読み込む</button>
+        <button class="btn s" id="lgDiag" style="flex:1">🔎 接続を診断</button>
+      </div>
     </div>
   </div>
 </div>
@@ -736,8 +741,10 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
  *  ▼ここだけ書き換えてください▼
  * ========================================================================== */
 var CONFIG = {
-  /* GAS ウェブアプリのデプロイURL（末尾は /exec）*/
-  API_URL: 'https://script.google.com/macros/s/AKfycbydJ_T9jCDTlTYL85-CeNBkvyiFCaAsa_VSngnar1Qgqejta1GSEqmBp-0hPiOdWvo/exec,
+  /* GAS ウェブアプリのデプロイURL（末尾は /exec）
+     ★書き換えるときは 前後の ' と 行末の , を消さないでください
+       （閉じ引用符が1つ欠けるだけで、アプリ全体が動かなくなります）*/
+  API_URL: 'https://script.google.com/macros/s/AKfycbydJ_T9jCDTlTYL85-CeNBkvyiFCaAsa_VSngnar1Qgqejta1GSEqmBp-0hPiOdWvo/exec',
 
   /* Googleカレンダー連携用 OAuth クライアントID（仕様書 p4）*/
   GOOGLE_CLIENT_ID: '121221123176-05ta83mmkbolprus8vkcui2puenm08ul.apps.googleusercontent.com',
@@ -748,7 +755,7 @@ var CONFIG = {
   /* 2週表示の並び  0 = 今週＋来週（既定） / 1 = 先週＋今週 */
   TWO_WEEK_BACK: 0,
 
-  VERSION: '1.0.5'
+  VERSION: '1.0.6'
 };
 
 /* ==========================================================================
@@ -1131,13 +1138,50 @@ var API = (function () {
   var seq = 0;
 
   function post(action, payload) {
-    return fetch(CONFIG.API_URL, {
+    /* 応答が来ないまま黙って止まらないよう、45秒で打ち切る */
+    var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) { try { ctl.abort(); } catch (e) { } } }, 45000);
+    var opt = {
       method: 'POST',
       redirect: 'follow',
       /* text/plain にすることで CORS プリフライトを回避（GASはOPTIONSを返せない） */
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: action, token: S.token, payload: payload || {} })
-    }).then(function (r) { return r.json(); });
+    };
+    if (ctl) opt.signal = ctl.signal;
+    return fetch(CONFIG.API_URL, opt)
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        clearTimeout(timer);
+        try { return JSON.parse(t); } catch (e) { throw explainBody(t); }
+      })
+      .catch(function (e) {
+        clearTimeout(timer);
+        if (e && e.name === 'AbortError') throw new Error('GASから応答がありません（45秒でタイムアウト）');
+        throw e;
+      });
+  }
+
+  /** JSONでない応答（＝たいていGoogleのログイン／エラーページ）を人が読める説明に変える */
+  function explainBody(t) {
+    var s = String(t || '');
+    var e;
+    if (/^\s*<(!doctype|html)/i.test(s)) {
+      if (/accounts\.google\.com|ServiceLogin|ログイン/.test(s)) {
+        e = new Error('Googleのログイン画面が返りました。GASのデプロイ設定「アクセスできるユーザー」を「全員」にしてください');
+        e.code = 'NOT_PUBLIC';
+      } else if (/承認|authoriz/i.test(s)) {
+        e = new Error('GASの承認が必要です。GASエディタで setup() を1回実行して承認し直してください');
+        e.code = 'NEED_AUTH';
+      } else {
+        e = new Error('GASからHTMLが返りました。デプロイURL（末尾 /exec）と公開設定を確認してください');
+        e.code = 'HTML_RESPONSE';
+      }
+      return e;
+    }
+    e = new Error('応答を解釈できません: ' + s.slice(0, 80));
+    e.code = 'BAD_RESPONSE';
+    return e;
   }
 
   function jsonp(action, payload) {
@@ -1174,9 +1218,17 @@ var API = (function () {
       return r.data;
     }).catch(function (err) {
       if (CONFIG.TRANSPORT === 'post' && !opt._retried && /Failed to fetch|NetworkError|CORS/i.test(err.message || '')) {
-        // POST が通らない環境では JSONP に自動フォールバック
+        // POST が通らない環境では JSONP に自動フォールバック。
+        // ただし JSONP で実際に通ったときだけ端末に覚えさせる
+        //（一時的な通信断でJSONPに固定されてしまわないようにするため）
         CONFIG.TRANSPORT = 'jsonp';
-        return call(action, payload, { _retried: true });
+        return call(action, payload, { _retried: true }).then(function (d) {
+          try { localStorage.setItem('hs_transport', 'jsonp'); } catch (e2) { }
+          return d;
+        }, function (e2) {
+          CONFIG.TRANSPORT = 'post';
+          throw e2;
+        });
       }
       if (err.code === 'UNAUTHORIZED') {
         S.token = ''; sessionStorage.removeItem('hs_token');
@@ -1228,6 +1280,7 @@ var S = {
   loadedRange: { from: '', to: '' },
   lastOrderSync: 0,    // 案件データを最後に取り直した時刻（無駄な再取得を抑える）
   pendingList: [],     // 未完了リストの取得結果（表示範囲外の案件もすぐ開けるように）
+  tantoLoaded: false,  // ログイン画面の担当者リストを読み込めたか
   nav: []              // 画面スタック
 };
 
@@ -1282,23 +1335,197 @@ function showLogin(msg) {
   $('#lgPw').value = '';
   $('#lgMsg').textContent = msg || '';
   loadTantoOptions();
+  focusPassword();
 }
 function hideLogin() { $('#vLogin').classList.add('hide'); }
 
-function loadTantoOptions() {
+/** 既定のカーソル位置はパスワード欄（担当者は前回のものが自動で選ばれるため） */
+function focusPassword() {
+  setTimeout(function () { try { $('#lgPw').focus(); } catch (e) { } }, 120);
+}
+
+/**
+ * 担当者リストの読込み。
+ *  ・読込み中はコンボに「担当者を読込み中…」を出す
+ *  ・失敗したら 1回だけ自動で再試行し、それでも駄目なら
+ *    「もう一度読み込む」「接続を診断」ボタンを出す
+ */
+function loadTantoOptions(retry) {
   var sel = $('#lgTanto');
-  if (sel.options.length > 1) return;
+  if (S.tantoLoaded) return;
+  clear(sel);
+  sel.appendChild(el('option', { value: '', text: '担当者を読込み中…' }));
+  sel.disabled = true;
+  $('#lgTools').classList.add('hide');
+
   API.call('tantoList', {}).then(function (d) {
+    S.tantoLoaded = true;
+    sel.disabled = false;
     clear(sel);
     sel.appendChild(el('option', { value: '', text: '担当者を選択…' }));
-    d.list.forEach(function (t) {
+    (d.list || []).forEach(function (t) {
       sel.appendChild(el('option', { value: t.担当ID, text: t.担当名 + '（' + t.担当ID + '）' }));
     });
     var cached = localStorage.getItem('hs_tanto');
     if (cached) sel.value = cached;          // 担当者はキャッシュで自動選択
-    if (sel.value) $('#lgPw').focus();
+    if ($('#lgMsg').textContent.indexOf('担当者') === 0) $('#lgMsg').textContent = '';
+    focusPassword();
   }).catch(function (e) {
-    $('#lgMsg').textContent = '担当者リストを取得できません: ' + e.message;
+    if (!retry) {                            // 一時的な失敗のことが多いので1回だけ自動再試行
+      setTimeout(function () { loadTantoOptions(true); }, 1500);
+      return;
+    }
+    sel.disabled = false;
+    clear(sel);
+    sel.appendChild(el('option', { value: '', text: '担当者を読み込めませんでした' }));
+    $('#lgMsg').textContent = '担当者リストを取得できません: ' + (e.message || '通信エラー');
+    $('#lgTools').classList.remove('hide');
+  });
+}
+
+/* ==========================================================================
+ *  接続診断
+ * --------------------------------------------------------------------------
+ *  「担当者が読み込めない」ときの原因はほぼ次のどれかなので、
+ *  GET(JSONP) と POST を別々に叩いて切り分け、直し方まで表示する。
+ *    ①API_URL が違う（/dev のまま・古いデプロイ）
+ *    ②GASの「アクセスできるユーザー」が『全員』になっていない
+ *    ③GAS側で例外（スクリプトプロパティ未設定など）
+ *    ④POSTだけ通らない環境（この場合はJSONPに自動で切り替える）
+ * ========================================================================== */
+function pingGet(ms) {
+  return new Promise(function (res) {
+    var cb = '__hping' + Date.now();
+    var sc = document.createElement('script');
+    var done = false;
+    var to = setTimeout(function () { finish({ ok: false, reason: 'タイムアウト' }); }, ms || 20000);
+    function finish(r) {
+      if (done) return;
+      done = true;
+      clearTimeout(to);
+      try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+      if (sc.parentNode) sc.parentNode.removeChild(sc);
+      res(r);
+    }
+    window[cb] = function (d) { finish({ ok: true, data: d }); };
+    sc.onerror = function () { finish({ ok: false, reason: 'スクリプトとして読めない応答' }); };
+    sc.src = CONFIG.API_URL + '?action=tantoList&callback=' + cb + '&payload=%7B%7D';
+    document.body.appendChild(sc);
+  });
+}
+function pingPost() {
+  return fetch(CONFIG.API_URL, {
+    method: 'POST', redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'tantoList', token: '', payload: {} })
+  }).then(function (r) {
+    return r.text().then(function (t) {
+      return { ok: true, status: r.status, finalUrl: r.url || '', body: t };
+    });
+  }).catch(function (e) { return { ok: false, message: e.message || '通信に失敗' }; });
+}
+
+function diagnoseConnection() {
+  var host = el('div', { style: 'font-size:13px;line-height:1.7' }, [
+    el('div', null, [el('span.spin.dk'), ' 診断しています…（最大20秒）'])
+  ]);
+  var m = modal({ title: '接続を診断', body: host, closable: true });
+
+  var url = String(CONFIG.API_URL || '');
+  var isDev = /\/dev\/?$/.test(url);
+  var urlOk = /\/exec$/.test(url);                       // 末尾が /exec なら形としてはOK
+  var gasHost = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url);
+
+  Promise.all([pingPost(), pingGet()]).then(function (r) {
+    var post = r[0], get = r[1];
+    var lines = [], cause = '', fix = [];
+
+    lines.push(['接続先', url]);
+    lines.push(['URLの形式', isDev ? '⚠ /dev になっています'
+      : (!urlOk ? '⚠ 末尾が /exec ではありません'
+        : (gasHost ? '正しい（/exec）' : '末尾は /exec（GAS以外のURLです）'))]);
+
+    var postJson = null, postHtml = false;
+    if (post.ok) {
+      postHtml = /^\s*<(!doctype|html)/i.test(post.body);
+      try { postJson = JSON.parse(post.body); } catch (e) { }
+      lines.push(['POST', 'HTTP ' + post.status + (postJson ? '（JSON応答）' : (postHtml ? '（HTMLが返りました）' : '（不明な応答）'))]);
+      if (post.finalUrl && post.finalUrl.indexOf('accounts.google.com') >= 0) {
+        lines.push(['転送先', 'Googleのログイン画面']);
+      }
+    } else {
+      lines.push(['POST', '✕ ' + post.message]);
+    }
+    lines.push(['GET（JSONP）', get.ok ? '○ 応答あり' : '✕ ' + get.reason]);
+
+    /* ---- 原因の切り分け（応答から分かることを優先し、URLの形はその次に見る） ---- */
+    if (isDev || !urlOk) {
+      cause = 'API_URL が正しくありません';
+      fix = [
+        isDev
+          ? 'GASの「デプロイ」→「デプロイを管理」→ ウェブアプリのURL（末尾が /exec）をコピーしてください。/dev は開発用で、自分しか開けません。'
+          : 'GASの「デプロイ」→「デプロイを管理」→ ウェブアプリのURL（https://script.google.com/macros/s/……/exec）をコピーしてください。',
+        'index.html 先頭の CONFIG.API_URL に貼り付けて、GitHubに push し直してください。'
+      ];
+    } else if (postJson && postJson.ok === true) {
+      cause = '通信は正常です（一時的な失敗だった可能性があります）';
+      fix = ['「もう一度読み込む」を押してください。'];
+      S.tantoLoaded = false;
+    } else if (postJson && postJson.ok === false) {
+      cause = 'GAS側でエラーが返っています：' + (postJson.error || '') + '（' + (postJson.code || '') + '）';
+      fix = [
+        'GASエディタで setup() を1回実行し、スクリプトプロパティ SPREADSHEET_ID が入っているか確認してください。',
+        'GASエディタの「実行数」でエラー内容も確認できます。'
+      ];
+    } else if (postHtml || (post.ok && post.status !== 200)) {
+      cause = 'GASのウェブアプリに誰でもアクセスできる状態になっていない可能性が高いです';
+      fix = [
+        'GASエディタ →「デプロイ」→「デプロイを管理」→ 鉛筆マーク',
+        '「次のユーザーとして実行」＝ 自分（スプレッドシートの所有者）',
+        '「アクセスできるユーザー」＝ 全員　★ここが「自分のみ」だとこの症状になります',
+        '直したら バージョン「新バージョン」→「デプロイ」で反映してください（URLは変わりません）'
+      ];
+    } else if (get.ok) {
+      cause = 'POSTだけが通らない環境です。JSONP方式に切り替えます';
+      fix = ['この端末では以後 JSONP で通信します（設定は保存しました）。「もう一度読み込む」を押してください。'];
+      CONFIG.TRANSPORT = 'jsonp';
+      try { localStorage.setItem('hs_transport', 'jsonp'); } catch (e) { }
+      S.tantoLoaded = false;
+    } else {
+      cause = 'GASのウェブアプリに誰でもアクセスできる状態になっていない可能性が高いです';
+      fix = [
+        'GASエディタ →「デプロイ」→「デプロイを管理」→ 鉛筆マーク',
+        '「次のユーザーとして実行」＝ 自分（' + 'スプレッドシートの所有者' + '）',
+        '「アクセスできるユーザー」＝ 全員　★ここが「自分のみ」だとこの症状になります',
+        '直したら バージョン「新バージョン」→「デプロイ」で反映してください（URLは変わりません）'
+      ];
+    }
+
+    clear(host);
+    host.appendChild(el('div', {
+      style: 'font-weight:700;color:var(--navy);margin-bottom:6px', text: '診断結果：' + cause
+    }));
+    var tbl = el('table.tbl');
+    lines.forEach(function (kv2) {
+      tbl.appendChild(el('tr', null, [
+        el('th', { style: 'width:96px;text-align:left', text: kv2[0] }),
+        el('td', { style: 'word-break:break-all;font-size:12px', text: kv2[1] })
+      ]));
+    });
+    host.appendChild(tbl);
+    host.appendChild(el('div', { style: 'font-weight:700;margin-top:10px', text: '直し方' }));
+    var ul = el('div', { style: 'margin-top:4px' });
+    fix.forEach(function (f, i) {
+      ul.appendChild(el('div', { style: 'margin-bottom:4px', text: (i + 1) + '. ' + f }));
+    });
+    host.appendChild(ul);
+    if (post.ok && !postJson) {
+      host.appendChild(el('div.hint', {
+        style: 'margin-top:10px;white-space:pre-wrap;word-break:break-all',
+        text: '応答の先頭:\n' + String(post.body).slice(0, 300)
+      }));
+    }
+    void m;
   });
 }
 
@@ -4188,6 +4415,17 @@ function boot() {
   $('#lgBtn').addEventListener('click', doLogin);
   $('#lgPw').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
   $('#lgTanto').addEventListener('change', function () { $('#lgPw').focus(); });
+  $('#lgReload').addEventListener('click', function () {
+    S.tantoLoaded = false;
+    $('#lgMsg').textContent = '';
+    loadTantoOptions();
+  });
+  $('#lgDiag').addEventListener('click', diagnoseConnection);
+
+  // POSTが通らない端末では前回の判定（JSONP）を引き継ぐ
+  try {
+    if (localStorage.getItem('hs_transport') === 'jsonp') CONFIG.TRANSPORT = 'jsonp';
+  } catch (e) { }
 
   // 画面リサイズ・回転でカレンダーを組み直す
   var rzT = null;
@@ -4241,6 +4479,32 @@ function boot() {
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
 
+</script>
+
+<!-- ==========================================================================
+     読み込み失敗の保険（別のスクリプトブロックにしてあります）
+       上のスクリプトは1つの塊なので、CONFIG の引用符を1つ閉じ忘れただけでも
+       「文法エラー → 全部動かない → ログイン画面のまま無反応」になります。
+       それが起きたことを画面で分かるようにするためのブロックです。
+     ========================================================================== -->
+<script>
+(function () {
+  setTimeout(function () {
+    if (typeof window.boot === 'function') return;      // 正常に読み込めていれば何もしない
+    var box = document.querySelector('#vLogin .loginbox');
+    if (!box || document.getElementById('lgFatal')) return;
+    var q = String.fromCharCode(39);                    // シングルクォート
+    var d = document.createElement('div');
+    d.id = 'lgFatal';
+    d.style.cssText = 'margin-top:12px;padding:10px 12px;border:2px solid #c62828;border-radius:8px;'
+      + 'color:#c62828;font-size:12.5px;line-height:1.8;text-align:left;background:#fff5f5';
+    d.textContent = '⚠ アプリを読み込めませんでした（index.html の JavaScript に文法エラーがあります）。'
+      + 'よくある原因は、CONFIG の API_URL を貼り替えたときに、'
+      + '終わりの引用符 ' + q + ' や 行末のカンマ , を消してしまうことです。'
+      + 'ブラウザのメニュー →「PC版サイト」→ F12 → Console に、何行目かが表示されます。';
+    box.appendChild(d);
+  }, 800);
+})();
 </script>
 </body>
 </html>
