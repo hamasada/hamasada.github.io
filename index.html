@@ -195,7 +195,7 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
 .fab{
   position:absolute;right:14px;bottom:calc(16px + var(--safe-b));width:var(--fab);height:var(--fab);
   border-radius:50%;background:var(--today);color:#fff;font-size:28px;display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 12px rgba(0,0,0,.28);z-index:30;
+  box-shadow:0 4px 12px rgba(0,0,0,.28);z-index:30;overflow:hidden;
 }
 .fab.l{left:14px;right:auto;background:#7e57c2;font-size:22px}
 .fab.g{background:var(--ok)} .fab.r{background:#c62828} .fab.gray{background:#78849b}
@@ -233,7 +233,12 @@ body.instbar .calfab{bottom:calc(80px + var(--safe-b))}
 body.instbar .fabrow{bottom:calc(86px + var(--safe-b))}
 
 /* PDFボタンなど、FAB内に画像を入れるとき */
-.fab img{width:60%;height:60%;object-fit:contain;display:block;pointer-events:none}
+/* FAB内の画像は、読込み前でも縮まないように実寸(calc)で指定する */
+.fab img{
+  width:calc(var(--fab) * .90);height:calc(var(--fab) * .90);
+  flex:0 0 auto;object-fit:contain;display:block;pointer-events:none;
+}
+.calfab img{width:44px;height:44px}
 
 /* ---------- Drawer ---------- */
 #drawer{position:absolute;inset:0;z-index:200;display:none}
@@ -824,7 +829,7 @@ var CONFIG = {
   /* 2週表示の並び  0 = 今週＋来週（既定） / 1 = 先週＋今週 */
   TWO_WEEK_BACK: 0,
 
-  VERSION: '1.0'
+  VERSION: '1.0.1'
 };
 
 /* ==========================================================================
@@ -4316,12 +4321,39 @@ function renderNotify() {
   main.appendChild(sc);
   var host = el('div.in');
   sc.appendChild(el('div.sec', null, [el('h3', { text: '通知とアプリのインストール' }), host]));
-  draw();
 
-  function row(label, value, cls) {
-    return el('div.kv', null, [
+  /* サーバ側の準備状況を先に確かめる（原因を切り分けて出すため） */
+  var prep = { state: 'checking', msg: '確認中…' };
+  host.appendChild(el('div.empty', null, [el('span.spin.dk'), ' 通知の準備状況を確認しています…']));
+  api('push.key', {}, true).then(function (d) {
+    if (d && d.vapidPublicKey) {
+      S.vapidPublicKey = d.vapidPublicKey;          // ログイン後にGASを直した場合も拾える
+      prep = { state: 'ready', msg: '準備できています' };
+    } else {
+      prep = {
+        state: 'nokey',
+        msg: '⚠ 通知キーが未作成です',
+        fix: 'GASエディタで generateVapidKeys() を1回実行してください（1秒で終わります）。'
+          + 'そのあとこの画面を開き直すと「準備できています」になります。'
+      };
+    }
+  }).catch(function (e) {
+    if (e && e.code === 'NO_ACTION') {
+      prep = {
+        state: 'nodeploy',
+        msg: '⚠ GASの再デプロイがまだです',
+        fix: 'GASに 12_Push.gs を追加し、03_Router.gs・05_Master.gs・00_Config.gs を差し替えて、'
+          + '「デプロイを管理」→ 鉛筆 →「新バージョン」→「デプロイ」を行ってください。'
+      };
+    } else {
+      prep = { state: 'error', msg: '⚠ 確認できませんでした', fix: (e && e.message) || '通信エラー' };
+    }
+  }).then(draw);
+
+  function row(label, value, wide) {
+    return el('div.kv' + (wide ? '.w' : ''), null, [
       el('b', { text: label }),
-      el('span' + (cls ? '.' + cls : ''), { text: value })
+      el('span', { text: value })
     ]);
   }
 
@@ -4330,11 +4362,16 @@ function renderNotify() {
     var perm = PWA.permission();
     var permTxt = { granted: '許可されています', denied: 'ブロックされています', default: 'まだ聞いていません', unsupported: 'この端末は非対応' }[perm] || perm;
 
-    host.appendChild(el('div.kvrow', null, [
-      row('インストール', PWA.standalone() ? 'アプリとして起動中' : 'ブラウザで表示中'),
-      row('通知の許可', permTxt)
-    ]));
-    host.appendChild(row('プッシュ通知の準備', S.vapidPublicKey ? 'サーバ側は準備できています' : '⚠ サーバ側の通知キーが未設定', true));
+    host.appendChild(row('インストール', PWA.standalone() ? 'アプリとして起動中' : 'ブラウザで表示中', true));
+    host.appendChild(row('通知の許可', permTxt, true));
+    host.appendChild(row('プッシュ通知の準備', prep.msg, true));
+    if (prep.fix) {
+      host.appendChild(el('div.hint', {
+        style: 'white-space:normal;line-height:1.7;background:#fff8e6;border:1px solid #f0d9a0;'
+          + 'border-radius:8px;padding:8px 10px;margin-top:6px',
+        text: prep.fix
+      }));
+    }
 
     /* --- インストール --- */
     if (!PWA.standalone()) {
@@ -4402,6 +4439,12 @@ function renderNotify() {
           onclick: function () {
             PWA.unsubscribe().then(function () { toast('通知を停止しました', 'warn'); draw(); });
           }
+        }));
+      } else if (prep.state !== 'ready') {
+        st.textContent = 'サーバ側の準備が終わると、ここから登録できるようになります。';
+        btnHost.appendChild(el('button.btn', {
+          style: 'width:100%;opacity:.6', text: '📩 この端末で通知を受け取る（準備待ち）',
+          onclick: function () { toast(prep.fix || prep.msg, 'warn', 7000); }
         }));
       } else {
         st.textContent = 'この端末はまだ登録されていません。登録すると、アプリを閉じていても通知が届きます。';
