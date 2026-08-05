@@ -1,0 +1,40 @@
+{
+  "id": "hamasada-app",
+  "name": "濵貞アプリ｜受発注管理",
+  "short_name": "濵貞アプリ",
+  "description": "顧客からの依頼、仲卸への発注、納品・入荷の確定、請求までをひとつのカレンダーで管理します。",
+  "lang": "ja",
+  "start_url": "./?src=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "portrait",
+  "background_color": "#eef2f7",
+  "theme_color": "#1f3864",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "新規登録（依頼・発注）",
+      "short_name": "新規登録",
+      "url": "./?a=new",
+      "icons": [{ "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "FAX写真から自動登録",
+      "short_name": "FAX撮影",
+      "url": "./?a=fax",
+      "icons": [{ "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "未完了リスト",
+      "short_name": "未完了",
+      "url": "./?a=pending",
+      "icons": [{ "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
