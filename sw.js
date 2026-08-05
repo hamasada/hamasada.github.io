@@ -1,5 +1,5 @@
 /* ==========================================================================
- *  濵貞アプリ Service Worker   ver 1.0.1
+ *  濵貞アプリ Service Worker   ver 1.0
  * --------------------------------------------------------------------------
  *  ①ホーム画面に追加（PWA）できるようにする
  *  ②電波が悪いところでも画面だけは開く（アプリの殻をキャッシュ）
@@ -8,7 +8,7 @@
  *  ★キャッシュ名にバージョンを入れてあります。index.html を更新したら
  *    build.py が自動でこの番号を書き換えるので、古いキャッシュは破棄されます。
  * ========================================================================== */
-var VERSION = '1.0.1';
+var VERSION = '1.0';
 var CACHE = 'hamasada-' + VERSION;
 
 /* アプリの殻（これだけあれば画面は出る） */
@@ -106,7 +106,7 @@ self.addEventListener('fetch', function (e) {
  *  本文は付けずに「届いたよ」だけを送り、中身はここでGASに取りに行きます。
  *  （本文を暗号化して送るには Apps Script に無い暗号処理が必要なため）
  * ========================================================================== */
-var API_URL = 'https://script.google.com/macros/s/AKfycbydJ_T9jCDTlTYL85-CeNBkvyiFCaAsa_VSngnar1Qgqejta1GSEqmBp-0hPiOdWvo/exec';
+var API_URL = 'https://script.google.com/macros/s/AKfycbzAazW7JnmSt-8ZxvmT1wXg4IvSaCLWEx1cQ0mJbRZNQ4wS-sj2CsfpmFTboeqNF7I/exec';
 
 self.addEventListener('push', function (e) {
   e.waitUntil((async function () {
