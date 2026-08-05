@@ -172,6 +172,8 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
 /* カレンダー画面のFABは日曜の行に重なるので、小さめ＋半透明にして下の内容が見えるようにする */
 .calfab{width:48px;height:48px;font-size:24px;opacity:.9;bottom:calc(10px + var(--safe-b))}
 .calfab.l{left:10px;font-size:19px}
+.calfab.s2{right:72px}                       /* ＋ の左隣（14+48+10） */
+.calfab.cam{background:#00838f;font-size:21px}
 .calfab:active{opacity:1}
 .fabrow{position:absolute;right:14px;bottom:calc(16px + var(--safe-b));display:flex;gap:12px;z-index:30}
 .fabrow .fab{position:static;right:auto;bottom:auto}
@@ -735,7 +737,7 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
  * ========================================================================== */
 var CONFIG = {
   /* GAS ウェブアプリのデプロイURL（末尾は /exec）*/
-  API_URL: 'https://script.google.com/macros/s/AKfycbwtei5yo6ekcU7QgXEXlzHcS0FPZIi36iJAHMOF10VIYXUqFW6VTTwOu6IUnSqsv98/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbydJ_T9jCDTlTYL85-CeNBkvyiFCaAsa_VSngnar1Qgqejta1GSEqmBp-0hPiOdWvo/exec,
 
   /* Googleカレンダー連携用 OAuth クライアントID（仕様書 p4）*/
   GOOGLE_CLIENT_ID: '121221123176-05ta83mmkbolprus8vkcui2puenm08ul.apps.googleusercontent.com',
@@ -746,7 +748,7 @@ var CONFIG = {
   /* 2週表示の並び  0 = 今週＋来週（既定） / 1 = 先週＋今週 */
   TWO_WEEK_BACK: 0,
 
-  VERSION: '1.0.4'
+  VERSION: '1.0.5'
 };
 
 /* ==========================================================================
@@ -870,11 +872,14 @@ function modal(o) {
     box: box,
     close: function () { if (wrap.parentNode) wrap.parentNode.removeChild(wrap); }
   };
+  /* タップで開いた直後に飛んでくる合成clickが、開いたばかりのウィンドウの
+     ボタン（一覧の1件目など）を勝手に押してしまうのを防ぐ。
+     ＝ウィンドウ全体を最初の400msだけ無反応にする。 */
+  wrap.addEventListener('click', function (e) {
+    if (Date.now() - born < 400) { e.stopPropagation(); e.preventDefault(); }
+  }, true);
   if (o.closable !== false) {
-    mask.addEventListener('click', function () {
-      if (Date.now() - born < 400) return;
-      api.close();
-    });
+    mask.addEventListener('click', function () { api.close(); });
   }
   var hd = el('div.mhd', null, [
     el('span', { text: o.title || '' }), el('div.sp'),
@@ -995,13 +1000,26 @@ function autoScrollAll(root) {
 }
 
 /* ==========================================================================
- *  フルスクリーン（ログイン後にアドレスバーを隠して全画面にする）
- *   ※ requestFullscreen は「ユーザー操作の直後」でないと拒否されるため、
- *     ログインボタンの click ハンドラの先頭で呼ぶ。
+ *  フルスクリーン
+ * --------------------------------------------------------------------------
+ *  ブラウザは requestFullscreen を「ユーザー操作の直後」しか許可しない。
+ *  さらに Android Chrome は
+ *     ・カメラ／ファイル選択ダイアログを開いた
+ *     ・<input type="date"> などのネイティブピッカーを開いた
+ *     ・ダウンロードが始まった
+ *  といったタイミングで勝手にフルスクリーンを解除してしまう。
+ *  そのため「フルスクリーンにしたい」という意思(FS.want)を端末に保存しておき、
+ *  解除を検知したら "次のタップ" の瞬間に黙って入り直す方式にしている。
+ *  （タップは正規のユーザー操作なのでブラウザに拒否されない）
  * ========================================================================== */
 function fsElement() {
   return document.fullscreenElement || document.webkitFullscreenElement ||
     document.mozFullScreenElement || document.msFullscreenElement || null;
+}
+function fsSupported() {
+  var e = document.documentElement;
+  return !!(e.requestFullscreen || e.webkitRequestFullscreen ||
+    e.mozRequestFullScreen || e.msRequestFullscreen);
 }
 function goFullscreen() {
   try {
@@ -1011,9 +1029,9 @@ function goFullscreen() {
       e.mozRequestFullScreen || e.msRequestFullscreen;
     if (!fn) return false;
     var r = fn.call(e, { navigationUI: 'hide' });
-    if (r && r.catch) r.catch(function () { });
+    if (r && r.catch) r.catch(function () { FS.fail++; });
     return true;
-  } catch (err) { return false; }
+  } catch (err) { FS.fail++; return false; }
 }
 function exitFullscreen() {
   try {
@@ -1025,11 +1043,66 @@ function exitFullscreen() {
     }
   } catch (err) { /* noop */ }
 }
-function toggleFullscreen() {
-  if (fsElement()) { exitFullscreen(); toast('フルスクリーンを解除しました', 'info'); }
-  else if (!goFullscreen()) {
-    toast('この端末では全画面にできません。ホーム画面に追加するとアドレスバーが消えます', 'warn', 5000);
+
+var FS = {
+  want: false,
+  fail: 0,            // 全画面にできなかった回数（3回で諦める）
+  _last: 0,
+
+  /** 起動時に1回だけ呼ぶ */
+  init: function () {
+    try { FS.want = localStorage.getItem('hs_fs') === '1'; } catch (e) { }
+    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange']
+      .forEach(function (t) { document.addEventListener(t, FS.onChange, false); });
+    // 解除されていたら "次のタップ" で入り直す（capture でいちばん先に拾う）
+    ['pointerup', 'touchend', 'mouseup', 'keyup'].forEach(function (t) {
+      document.addEventListener(t, FS.restore, true);
+    });
+    // タブに戻ってきた直後も候補にする
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) FS._last = 0;
+    });
+  },
+
+  /** 「全画面でいたい」意思を記録する */
+  set: function (on) {
+    FS.want = !!on;
+    FS.fail = 0;
+    try { localStorage.setItem('hs_fs', on ? '1' : '0'); } catch (e) { }
+  },
+
+  onChange: function () {
+    if (fsElement()) FS.fail = 0;                 // 入れたら失敗カウンタを戻す
+  },
+
+  /** 意図せず解除されていたら、このユーザー操作に便乗して入り直す */
+  restore: function () {
+    if (!FS.want || FS.fail >= 3) return;
+    if (fsElement()) return;
+    var now = Date.now();
+    if (now - FS._last < 900) return;             // 連打で何度も要求しない
+    FS._last = now;
+    goFullscreen();
+    // requestFullscreen は環境によって成功も失敗も通知しないことがあるので、
+    // 少しあとに実際に全画面になったかを見て判定する（無限に要求し続けない）
+    setTimeout(function () { if (!fsElement()) FS.fail++; }, 500);
   }
+};
+
+function toggleFullscreen() {
+  if (fsElement()) {
+    FS.set(false);
+    exitFullscreen();
+    toast('フルスクリーンを解除しました', 'info');
+    return;
+  }
+  if (!fsSupported()) {
+    toast('この端末では全画面にできません。ホーム画面に追加するとアドレスバーが消えます', 'warn', 5000);
+    return;
+  }
+  FS.set(true);
+  goFullscreen();
+  toast('フルスクリーンにしました（解除されても自動で戻ります）', 'info');
 }
 
 /* ==========================================================================
@@ -1143,13 +1216,18 @@ var S = {
   requests: [],
   orders: [],
   gcal: {              // Googleカレンダー
-    token: '', expires: 0, calendars: [], selected: [], events: {}, connected: false
+    token: '', expires: 0, calendars: [], selected: [], events: {},
+    connected: false,
+    auto: false,       // 起動時に自動で取り直すか（既定オフ＝起動時に認証画面を出さない）
+    account: ''        // 前回連携したアカウント（次回の hint に使う）
   },
   view: 'cal2',        // 'cal2' | 'calm'
   anchor: null,        // 表示中の基準日（Date）
   selected: null,      // 選択中の日付
   range: { from: '', to: '' },
   loadedRange: { from: '', to: '' },
+  lastOrderSync: 0,    // 案件データを最後に取り直した時刻（無駄な再取得を抑える）
+  pendingList: [],     // 未完了リストの取得結果（表示範囲外の案件もすぐ開けるように）
   nav: []              // 画面スタック
 };
 
@@ -1228,7 +1306,9 @@ function doLogin() {
   var id = $('#lgTanto').value, pw = $('#lgPw').value;
   if (!id) { $('#lgMsg').textContent = '担当者を選択してください'; return; }
   if (!pw) { $('#lgMsg').textContent = 'パスワードを入力してください'; return; }
-  // ★ユーザー操作の直後でなければブラウザが拒否するので、通信前にここで要求する
+  // ★ユーザー操作の直後でなければブラウザが拒否するので、通信前にここで要求する。
+  //   FS.set(true) で「全画面でいたい」意思を残し、以後は解除されても次のタップで戻す
+  FS.set(true);
   goFullscreen();
   var btn = $('#lgBtn');
   btn.disabled = true;
@@ -1393,6 +1473,7 @@ function applyOrders(o) {
   S.requests = o.requests || [];
   S.orders = o.orders || [];
   S.loadedRange = { from: o.from, to: o.to };
+  S.lastOrderSync = Date.now();
 }
 
 /** 案件データの再取得（前後2か月ぶん余裕を持って取り、ページ送りごとの通信を減らす） */
@@ -1465,12 +1546,17 @@ function renderCalendar() {
   wrap.appendChild(track);
   main.appendChild(wrap);
 
-  // FAB
+  // FAB（左＝未完了リスト／右＝新規登録／その左隣＝FAX写真から自動登録）
   main.appendChild(el('button.fab.l.calfab', {
-    text: '📝', title: '未完了リスト', onclick: showPending
+    text: '📝', title: '未完了リスト', 'data-t': 'fabPending', onclick: showPending
+  }));
+  main.appendChild(el('button.fab.calfab.s2.cam', {
+    text: '📷', title: 'FAX写真から自動登録', 'data-t': 'fabFax',
+    onclick: function () { navFromMenu('fax'); }
   }));
   main.appendChild(el('button.fab.calfab', {
-    text: '＋', title: '新規登録', onclick: function () { askNewKind(null); }
+    text: '＋', title: '新規登録', 'data-t': 'fabNew',
+    onclick: function () { askNewKind(null); }
   }));
 
   layoutPanes(wrap, track);
@@ -1818,12 +1904,18 @@ function openDateList(day) {
 
   draw(localByDate(day));
 
-  // 裏で最新を取り直す（他の担当が登録した分を反映）
-  reloadOrders().then(function () {
-    if (!m.box.parentNode) return;          // 既に閉じられていたら何もしない
-    draw(localByDate(day));
-    refreshCalendar();
-  }).catch(function () { });
+  // 裏で最新を取り直す（他の担当が登録した分を反映）。
+  // ★GASは同じユーザーからのリクエストを直列に処理するため、ここで毎回フル取得すると
+  //   直後にタップした案件の order.get がその後ろに並んでしまい待たされる。
+  //   30秒以内に取り直していれば省略する。
+  if (Date.now() - (S.lastOrderSync || 0) > 30000) {
+    S.lastOrderSync = Date.now();
+    reloadOrders().then(function () {
+      if (!m.box.parentNode) return;          // 既に閉じられていたら何もしない
+      draw(localByDate(day));
+      refreshCalendar();
+    }).catch(function () { });
+  }
 }
 
 /**
@@ -1861,6 +1953,7 @@ function withPhase(r, phase) {
 function orderLi(r, closeMe) {
   var kind = (r.type === '依頼') ? 'req' : 'ord';
   var st = statusLabel(r);
+  var mine = !!(S.me && String(r.担当ID) === String(S.me.担当ID));
   return el('button.li', {
     onclick: function () { if (closeMe) closeMe.close(); openOrderEdit(r.type, r.id); }
   }, [
@@ -1868,9 +1961,14 @@ function orderLi(r, closeMe) {
       el('div.t1', null, [
         el('span.badge.' + kind, { text: (r.phase || r.type) }),
         ' ' + (r.取引先名 || '(取引先未設定)'),
-        r.担当名 ? el('span', { style: 'font-weight:400;font-size:11.5px;color:#6b7787', text: '　/ ' + r.担当名 }) : null
+        // 全スタッフ分を出すので、誰の案件かは必ず見えるようにする
+        el('span', {
+          style: 'font-weight:400;font-size:11.5px;color:' + (mine ? '#6b7787' : '#b8860b'),
+          text: '　/ ' + (r.担当名 || tantoName(r.担当ID) || '担当未設定') + (mine ? '' : '（他担当）')
+        })
       ]),
-      el('div.t2', { text: r.明細要約 + '　/　' + (r.合計金額 ? yen(r.合計金額) : '¥0') + '　/　' + st }),
+      // 依頼時・発注時は金額が決まっていないのが普通なので「¥0」ではなく「金額指定無し」と出す
+      el('div.t2', { text: r.明細要約 + '　/　' + (num(r.合計金額) ? yen(r.合計金額) : '金額指定無し') + '　/　' + st }),
       el('div.t2', { text: r.概要 || '' })
     ]),
     el('div.acts', null, [el('span', { text: '✏️' })])
@@ -1926,17 +2024,21 @@ function askNewKind(day) {
   });
 }
 
-/** 未完了ステータスリスト（完了は非表示） */
+/**
+ * 未完了ステータスリスト（完了は非表示）
+ *  ★既定は「全スタッフ」。
+ *    他の担当の仕事を部下が代わりに行うことがあるため、自分の担当だけに絞ると仕事が見えなくなる。
+ */
 function showPending() {
   var body = el('div');
   var host = el('div');
-  var mineOnly = true;
+  var mineOnly = false;
   var sw = el('div.btnrow', { style: 'margin-bottom:8px' }, [
-    el('button.btn.s.on', {
-      text: '自分の担当のみ', onclick: function () {
+    el('button.btn.s', {
+      text: '全スタッフを表示中', onclick: function () {
         mineOnly = !mineOnly;
         this.classList.toggle('on', mineOnly);
-        this.textContent = mineOnly ? '自分の担当のみ' : '全担当を表示';
+        this.textContent = mineOnly ? '自分の担当のみ' : '全スタッフを表示中';
         load();
       }
     })
@@ -1951,6 +2053,8 @@ function showPending() {
     }).catch(function () { });
   }
   function render(d, partial) {
+      // 表示範囲の外にある案件も、タップしたときすぐ確定日ウィンドウを出せるよう控えておく
+      if (!partial) S.pendingList = d.list || [];
       clear(host);
       if (!d.list.length) {
         host.appendChild(el('div.empty', { text: partial ? '読み込み中…' : '未完了の案件はありません 🎉' }));
@@ -2871,50 +2975,150 @@ function showDupWarning(r, onForce) {
  *  編集更新画面（納品確定 / 入荷確定）  仕様書 p7 の 1〜10
  * ========================================================================== */
 
+/** 確定日ラベル（サーバの order.get を待たずに決められる） */
+function confirmLabelOf(type) { return (type === '依頼') ? '納品確定日' : '入荷確定日'; }
+
+/** 閲覧のみ（請求／支払確認まで終わった案件・キャンセル） */
+function isLockedStatus(st) {
+  var s = String(st);
+  return (s === 'X' || s === '5' || s === '6');
+}
+
+/** 手元のデータ（カレンダー取得済み／未完了リスト）から1件を探す */
+function findLocalOrder(type, id) {
+  var pools = [(type === '依頼') ? S.requests : S.orders, S.pendingList || []];
+  for (var p = 0; p < pools.length; p++) {
+    var list = pools[p] || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].type === type && String(list[i].id) === String(id)) return list[i];
+    }
+  }
+  return null;
+}
+
+/**
+ * 案件をタップ → 編集画面へ。
+ *
+ * ★体感速度の要:
+ *   以前は order.get の応答（2〜3秒）を待ってから確定日ウィンドウを出していた。
+ *   いまは
+ *     ①order.get は即座に走らせる（待たない）
+ *     ②手元のカレンダーデータで確定日ウィンドウを"その場で"開く
+ *     ③ユーザーが日付を決め終わる頃には応答が届いているので、そのまま編集画面へ
+ *   という順にしてある。人が入力している時間を通信時間に充てる形。
+ */
 function openOrderEdit(type, id) {
-  api('order.get', { type: type, id: id }).then(function (got) {
-    var h = got.head;
-    var locked = (h.ステータス === 'X' || h.ステータス === '5' || h.ステータス === '6');
-    if (locked) { navTo('orderEdit', { got: got, locked: true }); return; }
-    // 「納品確定日（もしくは入荷確定日）を入力してください」
-    askConfirmDate(h).then(function (v) {
+  // ①通信を先に開始（結果は後で使う）。未処理のrejectを起こさないよう受け止めておく
+  var pending = api('order.get', { type: type, id: id })
+    .then(function (g) { return { ok: true, got: g }; })
+    .catch(function (e) { return { ok: false, err: e }; });
+
+  var local = findLocalOrder(type, id);
+
+  // ②手元にデータがあり、閲覧のみでなければ通信を待たずにウィンドウを開く
+  if (local && !isLockedStatus(local.ステータス)) {
+    askConfirmDate({
+      type: local.type,
+      確定日: local.確定日 || '',
+      確定日ラベル: confirmLabelOf(local.type),
+      取引先名: local.取引先名,
+      日付: local.日付,
+      担当名: local.担当名,
+      明細要約: local.明細要約
+    }).then(function (v) {
       if (v === false) return;                       // 戻る
-      h.確定日 = v || h.確定日 || '';
-      navTo('orderEdit', { got: got, locked: false });
+      openEditWhenReady(pending, v);
     });
+    return;
+  }
+
+  // ③手元に無い／閲覧のみのときだけ、読み込みを待つ
+  openEditWhenReady(pending, undefined);
+}
+
+/** order.get の結果が届き次第、編集画面へ遷移する（届いていなければ短いスピナー） */
+function openEditWhenReady(pending, confirmDate) {
+  var m = null;
+  var t = setTimeout(function () {
+    m = modal({
+      title: '読み込み中', closable: false,
+      body: el('div', { style: 'text-align:center;padding:14px' }, [el('span.spin.dk'), ' 案件を読み込んでいます…'])
+    });
+  }, 250);                                            // 250ms以内に届けばスピナーは出さない
+
+  pending.then(function (r) {
+    clearTimeout(t);
+    if (m) m.close();
+    if (!r.ok) return;                                // エラー表示は api() 側で済んでいる
+    var got = r.got, h = got.head;
+    var locked = isLockedStatus(h.ステータス);
+    if (locked) { navTo('orderEdit', { got: got, locked: true }); return; }
+    if (confirmDate === undefined) {
+      // 手元にデータが無かった場合はここで確定日を聞く
+      askConfirmDate(h).then(function (v) {
+        if (v === false) return;
+        if (v !== null) h.確定日 = v;
+        navTo('orderEdit', { got: got, locked: false });
+      });
+      return;
+    }
+    if (confirmDate !== null) h.確定日 = confirmDate;  // null＝「あとで入力」＝サーバの値のまま
+    navTo('orderEdit', { got: got, locked: false });
   });
 }
 
+/**
+ * 確定日の入力ウィンドウ。
+ *  ★以前は「タップ → 別のカレンダーウィンドウ」の2段階だったが、
+ *    日付欄・今日/明日/明後日/クリアをこのウィンドウに直接載せて1画面で終わるようにした。
+ *  戻り値: false=戻る / null=あとで入力（変更しない） / 'yyyy-MM-dd' or ''=確定
+ */
 function askConfirmDate(h) {
   return new Promise(function (res) {
-    var cur = h.確定日 || '';
-    var btn = el('button.btn.gh.fldbtn', {
-      style: 'width:100%;text-align:left;padding:14px',
-      text: cur ? dateLabel(cur) : '（空欄）タップしてカレンダーから選択',
-      onclick: function () {
-        pickDate(h.確定日ラベル, cur || todayYmd()).then(function (v) {
-          if (v === null) return;
-          cur = v;
-          btn.textContent = cur ? dateLabel(cur) : '（空欄）タップしてカレンダーから選択';
-        });
-      }
+    var label = h.確定日ラベル || confirmLabelOf(h.type);
+    var inp = el('input', {
+      type: 'date', value: h.確定日 || '',
+      style: 'width:100%;padding:13px;border:1px solid var(--navy);border-radius:8px;font-size:17px;font-weight:700'
     });
-    var body = el('div', null, [
-      el('div', { style: 'font-size:14px;margin-bottom:10px', text: h.確定日ラベル + 'を入力してください' }),
-      btn,
-      el('div.hint', {
-        text: (h.type === '依頼' ? '顧客' : '仲卸') + '：' + h.取引先名 + '　/　' +
-          h.type + '日：' + mdw(h.日付)
-      })
+    var info = el('div.hint', { style: 'margin-top:7px;min-height:19px' });
+    function upd() {
+      if (!inp.value) { info.textContent = '空欄のままでも先に進めます（「あとで入力」）'; return; }
+      var k = KOYOMI.info(inp.value);
+      info.textContent = wareki(inp.value) + '（' + DOW[parseYmd(inp.value).getDay()] + '）' +
+        (k.holiday ? '　' + k.holiday : '') +
+        (S.market[inp.value] ? '　市場:' + S.market[inp.value].label : '　市場:休市');
+    }
+    inp.addEventListener('change', upd);
+    inp.addEventListener('input', upd);
+    upd();
+
+    function setD(n) { return function () { inp.value = ymd(addDays(new Date(), n)); upd(); }; }
+    var quick = el('div.btnrow', { style: 'margin-top:9px' }, [
+      el('button.btn.s', { text: '今日', onclick: setD(0) }),
+      el('button.btn.s', { text: '明日', onclick: setD(1) }),
+      el('button.btn.s', { text: '明後日', onclick: setD(2) }),
+      el('button.btn.s', { text: 'クリア', onclick: function () { inp.value = ''; upd(); } })
     ]);
+
     modal({
-      title: h.確定日ラベル + 'の入力', body: body, closable: false,
+      title: label + 'の入力', closable: false,
+      body: el('div', null, [
+        el('div.hint', {
+          style: 'margin-bottom:9px',
+          text: (h.type === '依頼' ? '顧客' : '仲卸') + '：' + (h.取引先名 || '—') +
+            '　/　' + h.type + '日：' + mdw(h.日付) +
+            (h.担当名 ? '　/　担当：' + h.担当名 : '')
+        }),
+        h.明細要約 ? el('div', { style: 'font-size:13px;margin-bottom:9px;color:#42506a', text: h.明細要約 }) : null,
+        inp, quick, info
+      ]),
       buttons: [
         { label: '戻る', fn: function () { res(false); } },
-        { label: 'あとで入力', fn: function () { res(''); } },
-        { label: '日付確定', cls: 'p', fn: function () { res(cur); } }
+        { label: 'あとで入力', fn: function () { res(null); } },
+        { label: '日付確定', cls: 'p', fn: function () { res(inp.value || ''); } }
       ]
     });
+    setTimeout(function () { try { inp.focus(); } catch (e) { } }, 80);
   });
 }
 
@@ -3429,17 +3633,38 @@ function renderBilling(mode) {
 var GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 var gcalClient = null;
 
+/**
+ * 起動時の復元。
+ *
+ * ★「起動のたびにGoogleのアカウント選択画面が出る」対策：
+ *   Google Identity Services のアクセストークンは1時間で切れ、
+ *   リフレッシュトークンをブラウザに保存できない仕組みなので、
+ *   起動のたびに取り直す＝そのつど画面が出る、というのが素の挙動。
+ *   そこで
+ *     ・予定は端末にキャッシュしておき、起動直後はキャッシュだけで描画する
+ *     ・起動時の自動認証は既定でオフ（連携画面のスイッチで変えられる）
+ *     ・認証するときは前回のアカウント(hint)を渡してアカウント選択を省く
+ *   の3点にした。既定では起動時に認証画面は出ない。
+ */
 function restoreGcal() {
   try {
     var sel = JSON.parse(localStorage.getItem('hs_gcal_sel') || '[]');
     S.gcal.selected = Array.isArray(sel) ? sel : [];
     S.gcal.connected = localStorage.getItem('hs_gcal_on') === '1';
+    S.gcal.auto = localStorage.getItem('hs_gcal_auto') === '1';
+    S.gcal.account = localStorage.getItem('hs_gcal_acct') || '';
   } catch (e) { }
-  if (S.gcal.connected) {
-    // 起動時にサイレント再認証を試みる（失敗しても致命的ではない）
+  if (!S.gcal.connected) return;
+
+  // ①端末キャッシュの予定をそのまま出す（通信も認証もしない）
+  var c = LS.get('gcal');
+  if (c && c.events) { S.gcal.events = c.events; S.gcal.__lastKey = c.key || ''; }
+
+  // ②「起動時に自動更新」がオンのときだけ、静かに取り直す
+  if (S.gcal.auto) {
     requestGcalToken(true).then(function () {
       var r = calcRange();
-      return loadGcalEvents(r.from, r.to);
+      return loadGcalEvents(r.from, r.to, true);
     }).then(function (ch) { if (ch) refreshCalendar(); }).catch(function () { });
   }
 }
@@ -3447,10 +3672,18 @@ function restoreGcal() {
 function gcalReady() {
   return !!(window.google && google.accounts && google.accounts.oauth2);
 }
+function hasGcalToken() {
+  return !!(S.gcal.token && S.gcal.expires > Date.now() + 60000);
+}
+function saveGcalAccount(email) {
+  if (!email || email.indexOf('@') < 0) return;
+  S.gcal.account = email;
+  try { localStorage.setItem('hs_gcal_acct', email); } catch (e) { }
+}
 
 function requestGcalToken(silent) {
   return new Promise(function (res, rej) {
-    if (S.gcal.token && S.gcal.expires > Date.now() + 60000) { res(S.gcal.token); return; }
+    if (hasGcalToken()) { res(S.gcal.token); return; }
     if (!gcalReady()) { rej(new Error('Googleライブラリの読み込み待ちです')); return; }
     if (!gcalClient) {
       gcalClient = google.accounts.oauth2.initTokenClient({
@@ -3474,8 +3707,12 @@ function requestGcalToken(silent) {
       });
     }
     gcalClient.__res = res; gcalClient.__rej = rej;
+    // 前回使ったアカウントを hint で渡すと、アカウント選択画面を飛ばせる
+    var o = {};
+    if (silent) o.prompt = '';
+    if (S.gcal.account) { o.hint = S.gcal.account; o.login_hint = S.gcal.account; }
     try {
-      gcalClient.requestAccessToken(silent ? { prompt: '' } : {});
+      gcalClient.requestAccessToken(o);
     } catch (e) { rej(e); }
   });
 }
@@ -3497,6 +3734,9 @@ function loadGcalCalendars() {
       S.gcal.calendars = (d.items || []).map(function (c) {
         return { id: c.id, name: c.summary, color: c.backgroundColor, primary: !!c.primary };
       });
+      // 主カレンダーのIDはそのアカウントのメールアドレス。次回の hint に使う
+      var pri = S.gcal.calendars.filter(function (c) { return c.primary; })[0];
+      if (pri) saveGcalAccount(pri.id);
       if (!S.gcal.selected.length) {
         S.gcal.selected = S.gcal.calendars.filter(function (c) { return c.primary; }).map(function (c) { return c.id; });
         saveGcalSel();
@@ -3506,11 +3746,16 @@ function loadGcalCalendars() {
 }
 function saveGcalSel() { localStorage.setItem('hs_gcal_sel', JSON.stringify(S.gcal.selected)); }
 
-/** 指定期間のイベントを取得。変更があれば true を返す */
-function loadGcalEvents(from, to) {
+/**
+ * 指定期間のイベントを取得。変更があれば true を返す。
+ *  ★force を付けない限り、有効なトークンが手元に無ければ何もしない。
+ *    （画面遷移のたびに勝手にGoogleの認証画面が出るのを防ぐため）
+ */
+function loadGcalEvents(from, to, force) {
   if (!S.gcal.connected || !S.gcal.selected.length) return Promise.resolve(false);
   var key = from + '_' + to + '_' + S.gcal.selected.join(',');
-  if (S.gcal.__lastKey === key) return Promise.resolve(false);
+  if (S.gcal.__lastKey === key && !force) return Promise.resolve(false);
+  if (!hasGcalToken() && !force) return Promise.resolve(false);
   return requestGcalToken(true).then(function () {
     var tmin = new Date(from + 'T00:00:00+09:00').toISOString();
     var tmax = new Date(to + 'T23:59:59+09:00').toISOString();
@@ -3555,6 +3800,7 @@ function loadGcalEvents(from, to) {
       });
       S.gcal.events = map;
       S.gcal.__lastKey = key;
+      LS.set('gcal', { key: key, events: map });   // 次の起動は認証なしでこれを描く
       return true;
     });
   }).catch(function () { return false; });
@@ -3583,13 +3829,50 @@ function renderGcal() {
             draw();
             var r = calcRange();
             S.gcal.__lastKey = '';
-            return loadGcalEvents(r.from, r.to);
+            return loadGcalEvents(r.from, r.to, true);
           }).catch(function (e) { toast(e.message || '認証に失敗しました', 'err'); });
         }
       }));
       return;
     }
-    host.appendChild(el('div.hint', { text: '表示するカレンダーにチェックを入れてください' }));
+
+    /* ---- 更新のしかた（起動時の認証画面をどうするか） ---- */
+    host.appendChild(el('div.hint', {
+      text: '連携中のアカウント：' + (S.gcal.account || '（次回の更新時に記録されます）')
+    }));
+    host.appendChild(el('button.btn.n', {
+      style: 'width:100%;margin-top:8px', text: '🔄 いま予定を取り直す',
+      onclick: function () {
+        var r = calcRange();
+        S.gcal.__lastKey = '';
+        loadGcalEvents(r.from, r.to, true).then(function (ok) {
+          toast(ok ? 'Googleカレンダーを更新しました' : '更新できませんでした', ok ? 'info' : 'warn');
+          refreshCalendar();
+        });
+      }
+    }));
+    var autoCb = el('input', { type: 'checkbox' });
+    autoCb.checked = !!S.gcal.auto;
+    autoCb.onchange = function () {
+      S.gcal.auto = autoCb.checked;
+      try { localStorage.setItem('hs_gcal_auto', autoCb.checked ? '1' : '0'); } catch (e) { }
+    };
+    host.appendChild(el('label.li', { style: 'gap:10px;cursor:pointer;margin-top:8px' }, [
+      autoCb,
+      el('div.body', null, [el('div.t1', { text: 'アプリ起動時に自動で取り直す' })])
+    ]));
+    host.appendChild(el('div.hint', {
+      style: 'white-space:normal;line-height:1.6',
+      text: 'オフ（推奨）＝起動やリロードのたびにGoogleの確認画面が出ません。前回取得した予定をそのまま表示し、'
+        + '上の「いま予定を取り直す」を押したときだけ更新します。'
+        + 'オンにすると起動時に静かに取り直しますが、Googleのアクセス許可は1時間で切れる仕組みのため、'
+        + '確認画面が出ることがあります。'
+    }));
+
+    host.appendChild(el('div.hint', {
+      style: 'margin-top:12px;border-top:1px solid var(--line);padding-top:10px',
+      text: '表示するカレンダーにチェックを入れてください'
+    }));
     var listHost = el('div', { style: 'margin-top:8px' });
     host.appendChild(listHost);
     if (!S.gcal.calendars.length) {
@@ -3607,7 +3890,7 @@ function renderGcal() {
           saveGcalSel();
           S.gcal.__lastKey = '';
           var r = calcRange();
-          loadGcalEvents(r.from, r.to);
+          loadGcalEvents(r.from, r.to, true).then(function (ok) { if (ok) refreshCalendar(); });
         };
         listHost.appendChild(el('label.li', { style: 'gap:10px;cursor:pointer' }, [
           cb,
@@ -3624,11 +3907,18 @@ function renderGcal() {
           if (S.gcal.token && gcalReady()) {
             try { google.accounts.oauth2.revoke(S.gcal.token, function () { }); } catch (e) { }
           }
-          S.gcal = { token: '', expires: 0, calendars: [], selected: [], events: {}, connected: false };
+          S.gcal = {
+            token: '', expires: 0, calendars: [], selected: [], events: {},
+            connected: false, auto: false, account: ''
+          };
           localStorage.removeItem('hs_gcal_on');
           localStorage.removeItem('hs_gcal_sel');
+          localStorage.removeItem('hs_gcal_auto');
+          localStorage.removeItem('hs_gcal_acct');
+          LS.del('gcal');
           toast('連携を解除しました', 'info');
           draw();
+          refreshCalendar();
         });
       }
     }));
@@ -3765,24 +4055,28 @@ function renderFax() {
       el('th', { text: '読取' }), el('th', { text: 'マスタ候補' }),
       el('th', { style: 'width:56px', text: '数量' }), el('th', { style: 'width:56px', text: '単位' })
     ]));
+    // ★マスタ候補には産地を出さない（品名だけ）。
+    //   依頼・発注の時点で産地の指定は無く、産地は入荷した時点で確定するため。
     dr.items.forEach(function (it) {
       var cs = el('select');
       cs.appendChild(el('option', { value: '', text: '（手入力のまま）' }));
       (it.候補 || []).forEach(function (c, ci) {
         cs.appendChild(el('option', {
           value: String(ci),
-          text: c.品名 + (c.産地 ? '（' + c.産地 + '）' : '') + ' ' + Math.round(c.score * 100) + '%'
+          text: c.品名 + ' ' + Math.round(c.score * 100) + '%'
         }));
       });
       if (it.候補 && it.候補.length) cs.value = '0';
       cs.onchange = function () {
         var c = it.候補[Number(cs.value)];
-        if (c) { it.品名 = c.品名; it.産地 = c.産地; it.マスタ区分 = c.種別; it.分類 = c.分類; it.マスタID = c.マスタID; }
+        if (c) { it.品名 = c.品名; it.マスタ区分 = c.種別; it.分類 = c.分類; it.マスタID = c.マスタID; }
+        it.産地 = '';
       };
       if (it.候補 && it.候補.length) {
         var c0 = it.候補[0];
-        it.品名 = c0.品名; it.産地 = c0.産地; it.マスタ区分 = c0.種別; it.分類 = c0.分類; it.マスタID = c0.マスタID;
+        it.品名 = c0.品名; it.マスタ区分 = c0.種別; it.分類 = c0.分類; it.マスタID = c0.マスタID;
       }
+      it.産地 = '';
       t.appendChild(el('tr', null, [
         el('td', { text: it.品名 }),
         el('td', null, [cs]),
@@ -3860,6 +4154,7 @@ function resizeImage(file, maxSide, quality) {
  *  起動
  * ========================================================================== */
 function boot() {
+  FS.init();                       // フルスクリーンの意思を復元し、解除されたら次のタップで戻す
   $('#btnMenu').addEventListener('click', function () {
     if ($('#drawer').classList.contains('on')) closeDrawer(); else openDrawer();
   });
