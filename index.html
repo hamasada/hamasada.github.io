@@ -7,8 +7,40 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1f3864">
 <meta name="format-detection" content="telephone=no">
-<title>濵貞アプリ</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%231f3864'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='%23fff' font-family='sans-serif'%3E濵%3C/text%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="濵貞アプリ">
+<meta name="application-name" content="濵貞アプリ">
+<meta name="description" content="株式会社濵貞の受発注アプリ。顧客からの依頼・仲卸への発注・納品確定・入荷確定・請求までを1つのカレンダーで管理し、二重注文と「言った言わない」を防ぎます。">
+<title>濵貞アプリ｜受発注管理</title>
+
+<!-- ---------- ファビコン／アプリアイコン ---------- -->
+<link rel="icon" href="img/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+
+<!-- ---------- OGP（LINEやメールで共有したときのカード） ---------- -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="濵貞アプリ">
+<meta property="og:title" content="濵貞アプリ｜受発注管理">
+<meta property="og:description" content="顧客からの依頼、仲卸への発注、納品・入荷の確定、請求までをひとつのカレンダーで。二重注文の警告と全操作の記録で、聞き間違いと「言った言わない」をなくします。">
+<meta property="og:image" content="https://hamasada.github.io/img/thumbnail.png">
+<meta property="og:image:alt" content="濵貞アプリ 受発注管理">
+<meta property="og:url" content="https://hamasada.github.io/">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="濵貞アプリ｜受発注管理">
+<meta name="twitter:description" content="依頼・発注・納品・入荷・請求をひとつのカレンダーで。二重注文の警告つき。">
+<meta name="twitter:image" content="https://hamasada.github.io/img/thumbnail.png">
+
+<!-- ---------- Google タグ（GA4） ---------- -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-SV2GNQ30CK"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-SV2GNQ30CK');
+</script>
+
 <style>
 /* ==========================================================================
    濵貞アプリ  ver1.0   -   GitHub Pages 用 単一ファイルフロントエンド
@@ -178,6 +210,31 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
 .fabrow{position:absolute;right:14px;bottom:calc(16px + var(--safe-b));display:flex;gap:12px;z-index:30}
 .fabrow .fab{position:static;right:auto;bottom:auto}
 
+/* ---------- ホーム画面に追加の案内バー ---------- */
+#instbar{
+  position:absolute;left:8px;right:8px;bottom:calc(8px + var(--safe-b));z-index:180;
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
+  background:var(--navy);color:#fff;box-shadow:0 6px 20px rgba(0,0,0,.3);
+  animation:ibin .25s ease-out;
+}
+@keyframes ibin{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+#instbar .ib-ico{font-size:24px;flex:0 0 auto}
+#instbar .ib-body{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.35}
+#instbar .ib-body b{font-size:14px}
+#instbar .ib-body span{font-size:11.5px;opacity:.85}
+#instbar .ib-go{
+  flex:0 0 auto;background:#fff;color:var(--navy);font-weight:700;font-size:13.5px;
+  padding:9px 14px;border-radius:9px;
+}
+#instbar .ib-no{flex:0 0 auto;color:#fff;opacity:.7;font-size:15px;padding:6px 4px}
+body.standalone #instbar{display:none!important}
+/* 案内バーが出ている間は、下のボタンが隠れないように持ち上げる */
+body.instbar .calfab{bottom:calc(80px + var(--safe-b))}
+body.instbar .fabrow{bottom:calc(86px + var(--safe-b))}
+
+/* PDFボタンなど、FAB内に画像を入れるとき */
+.fab img{width:60%;height:60%;object-fit:contain;display:block;pointer-events:none}
+
 /* ---------- Drawer ---------- */
 #drawer{position:absolute;inset:0;z-index:200;display:none}
 #drawer.on{display:block}
@@ -332,6 +389,7 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
       <button class="mi" data-nav="gcal"><span class="em">📅</span>Googleカレンダー連携</button>
       <button class="mi" data-nav="fax"><span class="em">📷</span>FAX写真から自動登録</button>
       <button class="mi" data-nav="log"><span class="em">📋</span>操作履歴（監査ログ）</button>
+      <button class="mi" data-nav="notify"><span class="em">🔔</span>通知設定・アプリの追加</button>
       <button class="mi" data-nav="fullscreen"><span class="em">⛶</span>フルスクリーン切替</button>
       <div class="foot">
         <div id="drwMe"></div>
@@ -354,6 +412,17 @@ main{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column
         <button class="btn s" id="lgDiag" style="flex:1">🔎 接続を診断</button>
       </div>
     </div>
+  </div>
+
+  <!-- ========== ホーム画面に追加の案内 ========== -->
+  <div id="instbar" class="hide">
+    <div class="ib-ico">📲</div>
+    <div class="ib-body">
+      <b>ホーム画面に追加できます</b>
+      <span id="ibTx">アプリとして開けて、起動も速くなります</span>
+    </div>
+    <button id="ibGo" class="ib-go">追加する</button>
+    <button id="ibNo" class="ib-no" aria-label="閉じる">✕</button>
   </div>
 </div>
 
@@ -744,7 +813,7 @@ var CONFIG = {
   /* GAS ウェブアプリのデプロイURL（末尾は /exec）
      ★書き換えるときは 前後の ' と 行末の , を消さないでください
        （閉じ引用符が1つ欠けるだけで、アプリ全体が動かなくなります）*/
-  API_URL: 'https://script.google.com/macros/s/AKfycbydJ_T9jCDTlTYL85-CeNBkvyiFCaAsa_VSngnar1Qgqejta1GSEqmBp-0hPiOdWvo/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbzAazW7JnmSt-8ZxvmT1wXg4IvSaCLWEx1cQ0mJbRZNQ4wS-sj2CsfpmFTboeqNF7I/exec',
 
   /* Googleカレンダー連携用 OAuth クライアントID（仕様書 p4）*/
   GOOGLE_CLIENT_ID: '121221123176-05ta83mmkbolprus8vkcui2puenm08ul.apps.googleusercontent.com',
@@ -755,7 +824,7 @@ var CONFIG = {
   /* 2週表示の並び  0 = 今週＋来週（既定） / 1 = 先週＋今週 */
   TWO_WEEK_BACK: 0,
 
-  VERSION: '1.0.7'
+  VERSION: '1.0'
 };
 
 /* ==========================================================================
@@ -1281,6 +1350,7 @@ var S = {
   lastOrderSync: 0,    // 案件データを最後に取り直した時刻（無駄な再取得を抑える）
   pendingList: [],     // 未完了リストの取得結果（表示範囲外の案件もすぐ開けるように）
   tantoLoaded: false,  // ログイン画面の担当者リストを読み込めたか
+  vapidPublicKey: '',  // プッシュ通知用の公開鍵（sync.boot で配られる）
   nav: []              // 画面スタック
 };
 
@@ -1602,9 +1672,11 @@ function bootstrap() {
     applyBoot(d);
     LS.set('boot', {
       me: d.me, tantos: d.tantos, customers: d.customers, brokers: d.brokers,
-      market: d.market, offDays: d.offDays, itemsVersion: d.itemsVersion
+      market: d.market, offDays: d.offDays, itemsVersion: d.itemsVersion,
+      vapidPublicKey: d.vapidPublicKey
     });
     if (!shown) { restoreGcal(); navRoot(); } else { refreshCalendar(); }
+    PWA.handleLaunchAction();          // ?a=fax などのショートカット
     done('最新です（' + Math.round((Date.now() - t0) / 100) / 10 + '秒）');
     if (!shown) toast('ようこそ ' + (S.me ? S.me.担当名 : '') + ' さん', 'info');
     if (S.marketEstimated) {
@@ -1624,6 +1696,7 @@ function bootstrap() {
 
 function applyBoot(d) {
   if (d.me) S.me = d.me;
+  if (typeof d.vapidPublicKey === 'string') S.vapidPublicKey = d.vapidPublicKey;
   S.tantos = d.tantos || [];
   S.customers = d.customers || [];
   S.brokers = d.brokers || [];
@@ -2358,6 +2431,7 @@ function render() {
     case 'gcal': renderGcal(); break;
     case 'fax': renderFax(); break;
     case 'log': renderLog(); break;
+    case 'notify': renderNotify(); break;
     default: renderCalendar();
   }
 }
@@ -3564,7 +3638,8 @@ function renderOrderEdit(P) {
   var fabs = el('div.fabrow');
   fabs.appendChild(el('button.fab.gray', { text: '←', onclick: back }));
   fabs.appendChild(el('button.fab.n', {
-    text: '📄', title: 'PDF発行', onclick: function () {
+    title: 'PDF発行', 'data-t': 'fabPdf', html: '<img src="img/pdf.png" alt="PDF">',
+    onclick: function () {
       if (isReq) {
         choiceModal('納品書PDF', '納品書PDFを発行しますか？', [
           { label: 'キャンセル', value: null },
@@ -3972,6 +4047,397 @@ function renderBilling(mode) {
       }
     })
   ]));
+}
+
+/* ==========================================================================
+ *  PWA（ホーム画面に追加）＋ 通知
+ * --------------------------------------------------------------------------
+ *  ・Service Worker を登録して、電波が悪くても画面が開くようにする
+ *  ・「ホーム画面に追加」できるときは、画面下に案内バーを出す
+ *  ・通知の許可 → この端末をプッシュ通知の宛先として登録する
+ *  ・新しいバージョンが出たら「更新しますか？」を出す
+ * ========================================================================== */
+var PWA = {
+  reg: null,
+  prompt: null,          // beforeinstallprompt のイベント
+  updating: false,
+  swReady: false,
+
+  /* ---------- 判定 ---------- */
+  standalone: function () {
+    try {
+      if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+      if (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches) return true;
+    } catch (e) { }
+    return window.navigator.standalone === true;
+  },
+  isIOS: function () {
+    var ua = navigator.userAgent || '';
+    return /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  },
+  canNotify: function () { return ('Notification' in window) && ('serviceWorker' in navigator); },
+  canPush: function () { return PWA.canNotify() && ('PushManager' in window); },
+  permission: function () { return ('Notification' in window) ? Notification.permission : 'unsupported'; },
+
+  /* ---------- 起動時 ---------- */
+  init: function () {
+    if (PWA.standalone()) document.body.classList.add('standalone');
+
+    if ('serviceWorker' in navigator) PWA.registerSW();
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      PWA.prompt = e;
+      PWA.showBar();
+    });
+    window.addEventListener('appinstalled', function () {
+      PWA.prompt = null;
+      PWA.hideBar();
+      LS.set('installed', 1);
+      toast('ホーム画面に「濵貞アプリ」を追加しました', 'info', 4000);
+      try { gtag('event', 'pwa_install'); } catch (e) { }
+    });
+
+    $('#ibGo').addEventListener('click', function () { PWA.install(); });
+    $('#ibNo').addEventListener('click', function () {
+      LS.set('instHide', Date.now());
+      PWA.hideBar();
+    });
+
+    // iOS は beforeinstallprompt が来ないので、こちらから案内する
+    if (PWA.isIOS() && !PWA.standalone()) setTimeout(PWA.showBar, 2500);
+
+    try { gtag('event', 'app_open', { display_mode: PWA.standalone() ? 'standalone' : 'browser' }); } catch (e) { }
+  },
+
+  registerSW: function () {
+    navigator.serviceWorker.register('sw.js').then(function (r) {
+      PWA.reg = r;
+      PWA.swReady = true;
+      if (r.waiting && navigator.serviceWorker.controller) PWA.askUpdate(r);
+      r.addEventListener('updatefound', function () {
+        var nw = r.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', function () {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) PWA.askUpdate(r);
+        });
+      });
+    }).catch(function () { /* 対応していない環境では何もしない */ });
+
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!PWA.updating) return;              // 初回登録では再読込しない
+      location.reload();
+    });
+    navigator.serviceWorker.addEventListener('message', function (e) {
+      var d = e.data || {};
+      if (d.type === 'NOTIFICATION_CLICK') {
+        // 通知から戻ってきたとき
+        if (/a=pending/.test(d.url || '')) { navRoot(); setTimeout(showPending, 400); }
+        else navRoot();
+      }
+    });
+  },
+
+  askUpdate: function (r) {
+    modal({
+      title: 'アプリの更新', closable: false,
+      body: el('div', { style: 'font-size:14.5px;line-height:1.8' },
+        '新しいバージョンがあります。\nいま更新しますか？（数秒で切り替わります）'),
+      buttons: [
+        { label: 'あとで' },
+        {
+          label: '更新する', cls: 'p', fn: function () {
+            PWA.updating = true;
+            if (r.waiting) r.waiting.postMessage({ type: 'SKIP_WAITING' });
+            setTimeout(function () { location.reload(); }, 1500);
+          }
+        }
+      ]
+    });
+  },
+
+  /* ---------- インストール案内バー ---------- */
+  showBar: function () {
+    if (PWA.standalone() || LS.get('installed')) return;
+    var hid = LS.get('instHide');
+    if (hid && Date.now() - hid < 7 * 86400000) return;      // 「×」から1週間は出さない
+    if (!PWA.prompt && !PWA.isIOS()) return;
+    $('#ibTx').textContent = PWA.isIOS() && !PWA.prompt
+      ? '共有ボタン →「ホーム画面に追加」でアプリになります'
+      : 'アプリとして開けて、起動も速くなります';
+    $('#ibGo').textContent = (PWA.isIOS() && !PWA.prompt) ? 'やり方' : '追加する';
+    $('#instbar').classList.remove('hide');
+    document.body.classList.add('instbar');       // FABを持ち上げる
+  },
+  hideBar: function () {
+    $('#instbar').classList.add('hide');
+    document.body.classList.remove('instbar');
+  },
+
+  install: function () {
+    if (PWA.prompt) {
+      var p = PWA.prompt;
+      PWA.prompt = null;
+      p.prompt();
+      p.userChoice.then(function (c) {
+        if (c && c.outcome === 'accepted') { PWA.hideBar(); }
+        else { LS.set('instHide', Date.now()); PWA.hideBar(); }
+        try { gtag('event', 'pwa_prompt', { outcome: (c && c.outcome) || 'unknown' }); } catch (e) { }
+      }).catch(function () { });
+      return;
+    }
+    PWA.howTo();
+  },
+
+  /** 手動で追加する手順（iOS／プロンプトが出ない端末） */
+  howTo: function () {
+    var ios = PWA.isIOS();
+    var steps = ios
+      ? ['画面下の「共有」ボタン（□に↑）を押す',
+        'メニューを下にたどって「ホーム画面に追加」を押す',
+        '右上の「追加」を押す']
+      : ['ブラウザ右上の「⋮」を押す',
+        '「アプリをインストール」または「ホーム画面に追加」を押す',
+        '「インストール」を押す'];
+    var body = el('div', null, [
+      el('div', { style: 'font-size:14px;line-height:1.8;margin-bottom:10px', text: 'ホーム画面に追加すると、アドレスバーが消えて全画面になり、起動も速くなります。' }),
+      el('div', null, steps.map(function (s, i) {
+        return el('div', {
+          style: 'display:flex;gap:9px;align-items:flex-start;margin-bottom:8px;font-size:14px'
+        }, [
+          el('span', {
+            style: 'flex:0 0 22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;'
+              + 'display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700',
+            text: String(i + 1)
+          }),
+          el('span', { text: s })
+        ]);
+      })),
+      ios ? el('div.hint', { style: 'margin-top:8px', text: '※iPhoneでは、ホーム画面に追加してからでないと通知を受け取れません。' }) : null
+    ]);
+    modal({ title: '📲 アプリとして使う', body: body, buttons: [{ label: '閉じる', cls: 'p' }] });
+  },
+
+  /* ---------- 通知 ---------- */
+  askPermission: function () {
+    if (!PWA.canNotify()) return Promise.reject(new Error('この端末は通知に対応していません'));
+    if (Notification.permission === 'granted') return Promise.resolve('granted');
+    if (Notification.permission === 'denied') {
+      return Promise.reject(new Error('通知がブロックされています。ブラウザの設定（サイトの設定→通知）で許可してください'));
+    }
+    return Notification.requestPermission().then(function (p) {
+      if (p !== 'granted') throw new Error('通知が許可されませんでした');
+      return p;
+    });
+  },
+
+  /** ローカル通知（サーバを使わないテスト） */
+  localNotify: function (title, body) {
+    return PWA.askPermission().then(function () {
+      if (PWA.reg && PWA.reg.showNotification) {
+        return PWA.reg.showNotification(title, {
+          body: body, icon: 'img/icon-192.png', badge: 'img/icon-192.png',
+          tag: 'hs-local', data: { url: './' }, vibrate: [80, 40, 80]
+        });
+      }
+      new Notification(title, { body: body, icon: 'img/icon-192.png' });
+    });
+  },
+
+  getSubscription: function () {
+    if (!PWA.reg || !PWA.reg.pushManager) return Promise.resolve(null);
+    return PWA.reg.pushManager.getSubscription().catch(function () { return null; });
+  },
+
+  subscribe: function () {
+    if (!PWA.canPush()) return Promise.reject(new Error('この端末はプッシュ通知に対応していません'));
+    if (!PWA.reg) return Promise.reject(new Error('準備中です。少し待ってからもう一度お試しください'));
+    if (!S.vapidPublicKey) {
+      return Promise.reject(new Error('サーバ側の通知キーが未設定です（GASで generateVapidKeys() を実行してください）'));
+    }
+    return PWA.askPermission().then(function () {
+      return PWA.getSubscription();
+    }).then(function (cur) {
+      if (cur) return cur;
+      return PWA.reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: b64ToU8(S.vapidPublicKey)
+      });
+    }).then(function (sub) {
+      return api('push.subscribe', { sub: sub.toJSON(), ua: navigator.userAgent }).then(function () {
+        try { gtag('event', 'push_subscribe'); } catch (e) { }
+        return sub;
+      });
+    });
+  },
+
+  unsubscribe: function () {
+    return PWA.getSubscription().then(function (sub) {
+      if (!sub) return false;
+      var ep = sub.endpoint;
+      return sub.unsubscribe().then(function () {
+        return api('push.unsubscribe', { endpoint: ep }, true).catch(function () { });
+      }).then(function () { return true; });
+    });
+  },
+
+  /** ショートカット（?a=…）や通知からの起動に対応する */
+  handleLaunchAction: function () {
+    var m = /[?&]a=([a-z]+)/.exec(location.search || '');
+    if (!m) return;
+    history.replaceState({ hs: 1 }, '', location.pathname);
+    var a = m[1];
+    setTimeout(function () {
+      if (a === 'fax') navFromMenu('fax');
+      else if (a === 'pending') showPending();
+      else if (a === 'new') askNewKind(null);
+    }, 300);
+  }
+};
+
+/** base64url の公開鍵を Uint8Array にする（pushManager.subscribe が要求する形） */
+function b64ToU8(b64) {
+  var pad = '='.repeat((4 - (b64.length % 4)) % 4);
+  var s = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  var raw = atob(s);
+  var out = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+/* ==========================================================================
+ *  通知設定の画面
+ * ========================================================================== */
+function renderNotify() {
+  setHeader('通知設定', { back: true });
+  var main = clear($('#main'));
+  var sc = el('div.scroll');
+  main.appendChild(sc);
+  var host = el('div.in');
+  sc.appendChild(el('div.sec', null, [el('h3', { text: '通知とアプリのインストール' }), host]));
+  draw();
+
+  function row(label, value, cls) {
+    return el('div.kv', null, [
+      el('b', { text: label }),
+      el('span' + (cls ? '.' + cls : ''), { text: value })
+    ]);
+  }
+
+  function draw() {
+    clear(host);
+    var perm = PWA.permission();
+    var permTxt = { granted: '許可されています', denied: 'ブロックされています', default: 'まだ聞いていません', unsupported: 'この端末は非対応' }[perm] || perm;
+
+    host.appendChild(el('div.kvrow', null, [
+      row('インストール', PWA.standalone() ? 'アプリとして起動中' : 'ブラウザで表示中'),
+      row('通知の許可', permTxt)
+    ]));
+    host.appendChild(row('プッシュ通知の準備', S.vapidPublicKey ? 'サーバ側は準備できています' : '⚠ サーバ側の通知キーが未設定', true));
+
+    /* --- インストール --- */
+    if (!PWA.standalone()) {
+      host.appendChild(el('button.btn.n', {
+        style: 'width:100%;margin-top:12px', text: '📲 ホーム画面に追加する',
+        onclick: function () { PWA.install(); }
+      }));
+      host.appendChild(el('div.hint', {
+        text: 'ホーム画面に追加すると、アドレスバーが消えて全画面になり、起動も速くなります。'
+          + (PWA.isIOS() ? 'iPhoneでは、追加してからでないと通知を受け取れません。' : '')
+      }));
+    }
+
+    /* --- 通知の許可 --- */
+    if (perm !== 'granted') {
+      host.appendChild(el('button.btn.p', {
+        style: 'width:100%;margin-top:12px', text: '🔔 通知を許可する',
+        onclick: function () {
+          PWA.askPermission().then(function () { toast('通知を許可しました'); draw(); })
+            .catch(function (e) { toast(e.message, 'err', 5000); draw(); });
+        }
+      }));
+      if (perm === 'denied') {
+        host.appendChild(el('div.hint', {
+          text: '一度ブロックすると、アプリからは聞けません。ブラウザのアドレスバー左の鍵マーク →「サイトの設定」→「通知」を「許可」に変えてください。'
+        }));
+      }
+      host.appendChild(el('div.hint', { text: 'この端末で通知を受け取るには、まず許可が必要です。' }));
+      return;
+    }
+
+    /* --- テスト通知（サーバを使わない） --- */
+    host.appendChild(el('button.btn', {
+      style: 'width:100%;margin-top:12px', text: '🔔 この端末でテスト通知を出す',
+      onclick: function () {
+        PWA.localNotify('濵貞アプリ', '通知はこのように表示されます（テスト）')
+          .then(function () { toast('通知を出しました'); })
+          .catch(function (e) { toast(e.message, 'err'); });
+      }
+    }));
+
+    /* --- プッシュ購読 --- */
+    var box = el('div', { style: 'margin-top:14px;border-top:1px solid var(--line);padding-top:12px' });
+    host.appendChild(box);
+    box.appendChild(el('div', { style: 'font-weight:700;color:var(--navy);margin-bottom:6px', text: 'アプリを閉じているときの通知（プッシュ）' }));
+    var st = el('div.hint', { text: '確認中…' });
+    box.appendChild(st);
+    var btnHost = el('div', { style: 'margin-top:8px' });
+    box.appendChild(btnHost);
+
+    PWA.getSubscription().then(function (sub) {
+      clear(btnHost);
+      if (sub) {
+        st.textContent = '✓ この端末は通知の宛先として登録済みです。アプリを閉じていても届きます。';
+        btnHost.appendChild(el('button.btn.p', {
+          style: 'width:100%', text: '📨 自分の端末にテスト送信',
+          onclick: function () {
+            api('push.test', {}).then(function (r) {
+              toast('送信しました（対象' + r.total + '件 / 成功' + r.sent + '件）', 'info', 5000);
+            }).catch(function (e) { toast(e.message, 'err', 5000); });
+          }
+        }));
+        btnHost.appendChild(el('button.btn.d', {
+          style: 'width:100%;margin-top:8px', text: '🔕 この端末で受け取るのをやめる',
+          onclick: function () {
+            PWA.unsubscribe().then(function () { toast('通知を停止しました', 'warn'); draw(); });
+          }
+        }));
+      } else {
+        st.textContent = 'この端末はまだ登録されていません。登録すると、アプリを閉じていても通知が届きます。';
+        btnHost.appendChild(el('button.btn.p', {
+          style: 'width:100%', text: '📩 この端末で通知を受け取る',
+          onclick: function () {
+            PWA.subscribe().then(function () { toast('この端末を登録しました'); draw(); })
+              .catch(function (e) { toast(e.message, 'err', 6000); });
+          }
+        }));
+      }
+      box.appendChild(el('div.hint', {
+        style: 'margin-top:10px',
+        text: '端末ごとの登録です。スマホとパソコンの両方で受け取るなら、それぞれで登録してください。'
+      }));
+    });
+
+    /* --- 登録済み端末の一覧（誰が受け取れる状態か） --- */
+    var listHost = el('div', { style: 'margin-top:14px' });
+    host.appendChild(listHost);
+    api('push.list', {}, true).then(function (d) {
+      clear(listHost);
+      var live = (d.list || []).filter(function (x) { return x.状態 === '有効'; });
+      listHost.appendChild(el('div.hint', {
+        style: 'font-weight:700', text: '通知を受け取れる端末：' + live.length + '台'
+      }));
+      live.forEach(function (x) {
+        listHost.appendChild(el('div.hint', {
+          text: '・' + (x.担当名 || x.担当ID || '担当未設定') + (x.mine ? '（この人＝自分）' : '')
+            + '　' + (x.登録日時 || '').slice(0, 10)
+        }));
+      });
+    }).catch(function () { clear(listHost); });
+  }
+
+  main.appendChild(el('div.fabrow', null, [el('button.fab.gray', { text: '←', onclick: back })]));
 }
 
 /* ==========================================================================
@@ -4582,7 +5048,8 @@ function resizeImage(file, maxSide, quality) {
  *  起動
  * ========================================================================== */
 function boot() {
-  FS.init();                       // フルスクリーンの意思を復元し、解除されたら次のタップで戻す
+  FS.init();
+  PWA.init();                      // Service Worker登録・インストール案内・通知                       // フルスクリーンの意思を復元し、解除されたら次のタップで戻す
   $('#btnMenu').addEventListener('click', function () {
     if ($('#drawer').classList.contains('on')) closeDrawer(); else openDrawer();
   });
@@ -4602,6 +5069,7 @@ function boot() {
         case 'gcal': navFromMenu('gcal'); break;
         case 'fax': navFromMenu('fax'); break;
         case 'log': navFromMenu('log'); break;
+        case 'notify': navFromMenu('notify'); break;
         case 'fullscreen': toggleFullscreen(); break;
       }
     });
