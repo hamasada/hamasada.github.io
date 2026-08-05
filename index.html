@@ -389,12 +389,12 @@ body.instbar .fabrow{bottom:calc(86px + var(--safe-b))}
       <button class="mi" data-nav="account"><span class="em">👤</span>アカウント</button>
       <button class="mi" data-nav="cust"><span class="em">👥</span>顧客台帳</button>
       <button class="mi" data-nav="brok"><span class="em">🏢</span>仲卸台帳</button>
-      <button class="mi" data-nav="invoice"><span class="em">💰</span>請求処理</button>
-      <button class="mi" data-nav="payment"><span class="em">🧾</span>支払い確認</button>
+      <button class="mi" data-nav="invoice" data-role="1"><span class="em">💰</span>請求処理</button>
+      <button class="mi" data-nav="payment" data-role="1"><span class="em">🧾</span>支払い確認</button>
       <button class="mi" data-nav="gcal"><span class="em">📅</span>Googleカレンダー連携</button>
       <button class="mi" data-nav="fax"><span class="em">📷</span>FAX写真から自動登録</button>
-      <button class="mi" data-nav="log"><span class="em">📋</span>操作履歴（監査ログ）</button>
-      <button class="mi" data-nav="notify"><span class="em">🔔</span>通知設定・アプリの追加</button>
+      <button class="mi" data-nav="log" data-role="9"><span class="em">📋</span>操作履歴（監査ログ）</button>
+      <button class="mi" data-nav="notify" data-role="9"><span class="em">🔔</span>通知設定・アプリの追加</button>
       <button class="mi" data-nav="fullscreen"><span class="em">⛶</span>フルスクリーン切替</button>
       <div class="foot">
         <div id="drwMe"></div>
@@ -818,7 +818,7 @@ var CONFIG = {
   /* GAS ウェブアプリのデプロイURL（末尾は /exec）
      ★書き換えるときは 前後の ' と 行末の , を消さないでください
        （閉じ引用符が1つ欠けるだけで、アプリ全体が動かなくなります）*/
-  API_URL: 'https://script.google.com/macros/s/AKfycbzAazW7JnmSt-8ZxvmT1wXg4IvSaCLWEx1cQ0mJbRZNQ4wS-sj2CsfpmFTboeqNF7I/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbxSwhC5oe8IbTxrGvMMhEkXBDrUZYHG0w-SQDsluTqWCUoTI-2ZA12jVJxKNicwNwE/exec',
 
   /* Googleカレンダー連携用 OAuth クライアントID（仕様書 p4）*/
   GOOGLE_CLIENT_ID: '121221123176-05ta83mmkbolprus8vkcui2puenm08ul.apps.googleusercontent.com',
@@ -829,7 +829,7 @@ var CONFIG = {
   /* 2週表示の並び  0 = 今週＋来週（既定） / 1 = 先週＋今週 */
   TWO_WEEK_BACK: 0,
 
-  VERSION: '1.0.1'
+  VERSION: '1.0'
 };
 
 /* ==========================================================================
@@ -1391,6 +1391,27 @@ function kv(label, val, wide) {
 function kvRow(list) {
   return el('div.kvrow', null, list.filter(Boolean));
 }
+
+/* ==========================================================================
+ *  権限（「担当」シートの「権限」列）
+ *    9 = システム管理者 / 1 = 責任者 / 0 = 一般スタッフ（空欄も0）
+ *  ★画面を隠すだけでなく、GAS側でも同じ判定をしています
+ * ========================================================================== */
+var ROLE_NAME = { 9: 'システム管理者', 1: '責任者', 0: '一般スタッフ' };
+/** 画面ごとの必要権限（書いていない画面は誰でも見られる） */
+var VIEW_ROLE = { billing: 1, log: 9, notify: 9 };
+
+/** いまの権限（サーバから来た値。空欄・想定外は 0＝一般スタッフ） */
+function myRole() {
+  var v = (S.me && S.me.権限 !== undefined && S.me.権限 !== null) ? S.me.権限 : 0;
+  var s = String(v)
+    .replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+    .replace(/[^0-9.]/g, '').replace(/\.\d*$/, '');
+  var r = parseInt(s, 10);
+  return (r === 9 || r === 1) ? r : 0;
+}
+function myRoleName() { return ROLE_NAME[myRole()]; }
+function canView(v) { return myRole() >= (VIEW_ROLE[v] || 0); }
 
 function partnerOf(type, id) {
   var list = (type === '発注') ? S.brokers : S.customers;
@@ -2423,6 +2444,12 @@ function curParams() { return S.navP[S.navP.length - 1] || {}; }
 
 function render() {
   var v = curView(), p = curParams();
+  // 権限のない画面は開かせない（ショートカットや古い履歴からの直行も止める）
+  if (v !== 'cal' && !canView(v)) {
+    toast('この画面は' + ROLE_NAME[VIEW_ROLE[v]] + 'のみ表示できます', 'warn', 4500);
+    S.nav = ['cal']; S.navP = [{}];
+    v = 'cal'; p = {};
+  }
   closeDrawer();
   window.scrollTo(0, 0);
   switch (v) {
@@ -2466,7 +2493,13 @@ function buildTantoSelect(cur, onChange) {
 /* ---------------- ドロワー ---------------- */
 function openDrawer() {
   $('#drawer').classList.add('on');
-  $('#drwMe').textContent = S.me ? (S.me.担当名 + '（' + S.me.担当ID + '）でログイン中') : '';
+  // 権限に応じてメニュー項目を出し分ける
+  $$('#drawer .mi[data-role]').forEach(function (b) {
+    var need = Number(b.getAttribute('data-role')) || 0;
+    b.classList.toggle('hide', myRole() < need);
+  });
+  $('#drwMe').textContent = S.me
+    ? (S.me.担当名 + '（' + S.me.担当ID + '／' + myRoleName() + '）でログイン中') : '';
   $('#drwVer').textContent = 'ver ' + CONFIG.VERSION + '　通信:' + CONFIG.TRANSPORT.toUpperCase();
 }
 function closeDrawer() { $('#drawer').classList.remove('on'); }
